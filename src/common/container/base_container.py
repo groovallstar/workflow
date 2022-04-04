@@ -5,15 +5,13 @@ import pandas as pd
 from common.function import get_code_line
 
 class DataContainer:
-
-
-    def __init__(self, x_data, y_data, md5_data=None):
+    """Base Container"""
+    def __init__(self, x_data, y_data):
+        """initialize"""
         self._x_data = x_data
         self._y_data = y_data
-        self._md5_data = md5_data
 
-        if isinstance(x_data, pd.DataFrame) is True:
-
+        if isinstance(x_data, pd.DataFrame):
             # int64 -> int32. Reduce Memory.
             self._x_data = x_data.astype('int32')
             self._y_data = y_data.astype('int32')
@@ -40,20 +38,12 @@ class DataContainer:
     def y_data(self, data):
         self._y_data = data
 
-    @property
-    def md5_data(self):
-        return self._md5_data
-
-    @md5_data.setter
-    def md5_data(self, data):
-        self._md5_data = data
-
     def split(self,
               train_size: float = 0.75,
               validation_size: float = None,
-              test_size: float = None, **options):
+              test_size: float = None, **options) -> tuple:
         """
-        train_test_split Method.
+        train_test_split.
 
         - parameters
         train_size : split train data size
@@ -124,7 +114,7 @@ class DataContainer:
 
         Args:
             frac (float): 추출 비율
-            random_state (int, optional): _description_. Defaults to None.
+            random_state (int, optional): 추출 랜덤 시드 값
 
         Raises:
             ValueError: y_data가 없을 경우
@@ -133,11 +123,9 @@ class DataContainer:
             ValueError: y_data 비율대로 분할이 잘못된 경우
 
         Returns:
-            tuple: x_data, y_data, md5_data
+            tuple: x_data, y_data
         """
-        x_data, y_data, md5_data = (pd.DataFrame(),
-                                    pd.Series(dtype='int32'),
-                                    pd.Series(dtype='object'))
+        x_data, y_data = (pd.DataFrame(), pd.Series(dtype='uint32'))
 
         # y_data를 이용해 StratifiedKFold 해야하므로 empty 체크.
         if self._y_data.empty:
@@ -150,8 +138,6 @@ class DataContainer:
             x_data = self._x_data.sample(frac=frac)
         if (self._y_data is not None) and (self._y_data.size):
             y_data = self._y_data.sample(frac=frac)
-        if (self._md5_data is not None) and (self._md5_data.size):
-            md5_data = self._md5_data.sample(frac=frac)
 
         if (not x_data.size) or (not y_data.size):
             raise ValueError('x_data or y_data size empty.')
@@ -170,10 +156,8 @@ class DataContainer:
             x_data = x_data.iloc[train_index]
         if (y_data is not None) and (y_data.size):
             y_data = y_data.iloc[train_index]
-        if (md5_data is not None) and (md5_data.size):
-            md5_data = md5_data.iloc[train_index]
 
-        return (x_data, y_data, md5_data)
+        return (x_data, y_data)
 
     def to_csv(self, csv_file_path: str) -> None:
         """pandas DataFrame -> csv file로 저장
@@ -199,9 +183,6 @@ class DataContainer:
 
             df = self._x_data.copy()
             df['label'] = self._y_data
-
-            if self._md5_data.size:
-                df.insert(0, 'md5', self._md5_data)
 
             df.to_csv(csv_file_path, index=False)
 
