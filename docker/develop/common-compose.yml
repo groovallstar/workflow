@@ -1,0 +1,20 @@
+version: '3.3'
+
+services:
+  sklearn:
+    image: sklearn:release
+    env_file:
+      - .env
+    volumes:
+      - /workflow:/workflow
+      - /tmp:/tmp
+      - ${MLFLOW_RUNS_PATH}:/mlruns
+
+  flask:
+    image: flask:release
+    env_file:
+      - .env
+    volumes:
+      - /workflow:/workflow
+      - /tmp:/tmp
+      - ${MLFLOW_RUNS_PATH}:/mlruns

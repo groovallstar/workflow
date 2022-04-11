@@ -1,0 +1,27 @@
+FROM yankovg/python3.8.2-ubuntu18.04:latest
+
+SHELL ["/bin/bash", "-c"]
+
+RUN apt-get clean
+RUN apt-get update && apt-get install -y git
+
+# timezone
+RUN export DEBIAN_FRONTEND=noninteractive
+RUN ln -fs /usr/share/zoneinfo/Asia/Seoul /etc/localtime
+RUN apt-get install -y tzdata
+RUN dpkg-reconfigure --frontend noninteractive tzdata
+
+# python recompile (_bz error, lzma warning)
+RUN wget https://www.python.org/ftp/python/3.8.2/Python-3.8.2.tgz
+RUN tar xvfz Python-3.8.2.tgz
+WORKDIR /Python-3.8.2
+RUN ./configure --enable-optimizations
+RUN make
+RUN make install
+
+# default python version set
+RUN update-alternatives --install /usr/bin/python python /usr/local/bin/python3.8 1
+
+# pip install list
+COPY requirements.txt .
+RUN pip install -r requirements.txt

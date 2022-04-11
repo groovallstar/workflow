@@ -4,12 +4,11 @@ services:
   mongo:
     image: mongo
     ports:
-      - 0.0.0.0:27017:27017
+      - 0.0.0.0:37017:37017
     volumes:
-        - <bind mount host volume>:/data/db
-    env_file: .env
-    expose:
-      - 27017
+      - ${SACRED_DATABASE_PATH}:/data/db
+    env_file: 
+      - .env
     networks:
       - omniboard
 

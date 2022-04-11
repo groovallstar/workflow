@@ -1,0 +1,29 @@
+version: '3.3'
+
+services:
+  sklearn_build_and_test:
+    container_name: sklearn_build_and_test
+    extends:
+      file: ../common-compose.yml
+      service: sklearn
+    build:
+      context: ../sklearn
+      dockerfile: dockerfile
+      shm_size: '20gb' # using ray shared memory option.
+    env_file:
+      - ../.env
+    command:
+      pytest ${PYTHONPATH}/tests/test_evaluation.py
+
+  flask_build_and_test:
+    container_name: flask_build_and_test
+    extends:
+      file: ../common-compose.yml
+      service: flask
+    build:
+      context: ../flask
+      dockerfile: dockerfile
+    env_file:
+      - ../.env
+    command:
+      pytest ${PYTHONPATH}/tests/test_rest_api.py
