@@ -1,5 +1,4 @@
 import inspect
-import re
 import pandas as pd
 
 from common.function import get_code_line
@@ -19,6 +18,7 @@ class DataContainer:
             # LightGBM categorical feature 관련 에러
             # (Do not support special JSON characters in feature name.)
             # 컬럼명에 특정 특수문자 포함될 경우 회피하기 위해 제거.
+            import re
             self._x_data = self._x_data.rename(
                 columns=lambda x: re.sub('[^A-Za-z0-9_/]+', '', x))
 
@@ -38,26 +38,25 @@ class DataContainer:
     def y_data(self, data):
         self._y_data = data
 
-    def split(self,
-              train_size: float = 0.75,
-              validation_size: float = None,
-              test_size: float = None, **options) -> tuple:
+    def split(
+        self, train_size: float = 0.75, validation_size: float = None,
+        test_size: float = None, **options) -> tuple:
         """
         train_test_split.
 
         - parameters
-        train_size : split train data size
-        validation_size : split validation data size
-        test_size : split test data size
-        options : sklearn train_test_split parameter
+        train_size: split train data size
+        validation_size: split validation data size
+        test_size: split test data size
+        options: sklearn train_test_split parameter
 
         - return value
         train_data_list, validation_data_list, test_data_list
 
         - description
-        validation_size 사용 할 때 : train_size + validation_size
+        validation_size 사용 할 때: train_size + validation_size
                                     + test_size = 1.0 이 되어야 함
-        validation_size 사용 안할 때 : train_size + test_size = 1.0 이 되어야 함
+        validation_size 사용 안할 때: train_size + test_size = 1.0 이 되어야 함
         """
         import math
         # 총 비율 체크.
@@ -110,7 +109,7 @@ class DataContainer:
         """Data Sampling. (y_data 비율에 따라 균등 추출)
 
         - parameters
-        frac : 추출 비율
+        frac: 추출 비율
 
         Args:
             frac (float): 추출 비율

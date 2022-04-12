@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" 
+  content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <title>{% block document_title %} ML {% endblock %}</title>
+  <link rel="shortcut icon" href="#">
+  <!-- Bootstrap core CSS -->
+  <link rel="stylesheet" 
+  href="{{ url_for('static', filename='bootstrap/css/bootstrap.min.css') }}">
+  <!-- Material Design Bootstrap -->
+  <link rel="stylesheet" 
+  href="{{ url_for('static', filename='bootstrap/css/mdb.min.css') }}">
+  <!-- Your custom styles (optional) -->
+  <link rel="stylesheet" 
+  href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header>
+    {% include "navbar.html" ignore missing %}
+  </header>
+  <main class="container-fluid d-flex flex-column vh-100">
+    <div class="row flex-grow-1 overflow-auto mg-bt-64" id="main-row">
+      <div class="col" id="main-contents">
+        {# Main Contents #}
+      </div>
+    </div>
+    <!-- floating button -->    
+    <button class="btn btn-primary btn-sm float pt-nav-collapse-hide" 
+    id="btn-show-task-list" onclick="ToggleTaskListButton(this)">
+      Show Task
+    </button>
+    <footer class="row flex-shrink-0 overflow-auto d-none">
+      <div class="col mg-tp-bt-12">
+        {% include "footer.html" ignore missing %}
+      </div>
+    </footer>
+  </main>
+  <script type="text/javascript" 
+  src="{{url_for('static', filename='jquery/jquery-3.6.0.min.js')}}"></script>
+  <script type="text/javascript" 
+  src="{{url_for('static', filename='bootstrap/js/bootstrap.min.js')}}"></script>
+  <script type="text/javascript"
+  src="{{url_for('static', filename='js/uuidv4.min.js')}}"></script>
+  <script type="text/javascript"
+  src="{{url_for('static', filename='js/function.js')}}"></script>
+  <script type="text/javascript"
+  src="{{url_for('static', filename='js/procedure.js')}}"></script>
+  <script type="text/javascript"
+  src="{{url_for('static', filename='js/pages.js')}}"></script>
+  <script type="text/javascript"
+  src="{{url_for('static', filename='js/script.js')}}"></script>
+</body>
+</html>

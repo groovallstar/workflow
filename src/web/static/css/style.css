@@ -1,0 +1,56 @@
+body {
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
+.float {
+	position:fixed;
+}
+
+.pt-nav-collapse-hide
+{
+  top: 77px;
+	right: 24px;
+}
+
+.pt-nav-collapse-show
+{
+  top: 204px;
+	right: 24px;
+}
+
+.mg-bt-64 {
+  margin-bottom: 64px;
+}
+
+.mg-bt-192 {
+  margin-bottom: 192px;
+}
+
+.mg-tp-bt-12 {
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+footer {
+  border: 1px solid gray;
+  margin-bottom: 64px;
+  max-height: 40%; 
+}
+
+.mg-tp-bt-20 {
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.error-message {
+  color: red;
+  font-size: 13px;
+  margin-top: 5px;
+}
+
+.list-group-item.active {
+  color: black;
+  background-color: initial;
+  border-color: gray;
+}

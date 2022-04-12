@@ -14,8 +14,7 @@ def procedure(
         database (str): database 명
         collection (str): collection 명
         item (dict): insert 할 dict 데이터
-        date_time (str): insert 할 날짜 (str)
-                         e.g. YYYYMM
+        date_time (str): insert 할 날짜 (str) e.g. YYYYMM
 
     Raises:
         ValueError: 날짜 문자열이 잘못될 경우
@@ -29,14 +28,15 @@ def procedure(
             raise ValueError("Invalid Parameter.")
 
         collection = Collection(database, collection)
-        date = Collection.convert_string_to_datetime(date_time)
+        date = Collection.convert_string_to_datetime(
+            date_time_string=date_time)
         if not date:
             raise ValueError("convert_string_to_datetime failed."
                             f" date={date_time}")
         item['date'] = date
         result = collection.find_one_and_replace(item, item, upsert=True)
         if result:
-            raise ValueError(f"DocumentAlready Exist. data={item}")
+            raise ValueError(f"Document Already Exist. data={item}")
 
     except BaseException as ex:
         TraceLog.info(ex)
@@ -55,12 +55,11 @@ def parse_commandline() -> dict:
 
     description = textwrap.dedent("""
     ===========================================================================
-    --dataset : sklearn Datasets (str)
+    --dataset: sklearn Datasets (str)
                 e.g. iris, digits, wine, breast_cancer
-    --database : Database Name
-    --collection : Collection Name
-    --date : DateTime String (YYYYMM) 
-             e.g. 202001
+    --database: Database Name
+    --collection: Collection Name
+    --date: DateTime String (YYYYMM) e.g. 202001
     ===========================================================================
     """)
 
@@ -76,7 +75,7 @@ def parse_commandline() -> dict:
         '--collection', type=str, required=True, help="Collection Name.")
     parser.add_argument(
         '--date', type=str, required=True, help='Date.')
-    
+
     # argparse.Namespace to dict
     args, _ = parser.parse_known_args()
     return vars(args)
@@ -113,7 +112,7 @@ def insert_data(parameters: dict) -> None:
 
     if (not load_data) or (isinstance(load_data, Bunch) is False):
         raise BufferError('load data failed.')
-    
+
     df = pd.DataFrame(data=load_data.data, columns=load_data['feature_names'])
     df['label'] = load_data.target
     convert_dict_items = df.to_dict('records')
@@ -155,7 +154,7 @@ def main():
         TraceLog().info(f"Error occurred. Message: {e}")
 
     finally:
-        TraceLog().info('=  End =')
+        TraceLog().info('= End =')
 
 if __name__ == '__main__':
     main()   

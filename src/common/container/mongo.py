@@ -4,8 +4,6 @@ from typing import Union, Callable, Any
 import inspect
 from common.function import get_code_line
 
-DATABASE_URL = 'mongodb://<user>:<password>@<ip>:27017'
-
 def verify_collection_object(func) -> Callable:
     """Collection 객체 유효성 체크 데코레이터"""
     def wrapper(self, *args, **kwargs):
@@ -33,8 +31,12 @@ class MongoDB:
         Args:
             database_name (Database 명): Database 명
         """
+        import os
+        mongodb_url = os.environ.get('MONGODB_URL')
+        if not mongodb_url:
+            raise Exception('MONGODB_URL environment variable not found.')
         self._connection = pymongo.MongoClient(
-            DATABASE_URL, directConnection=True)
+            mongodb_url, directConnection=True)
         self._database = None
         if database_name:
             self._database = self._connection.get_database(database_name)
@@ -45,14 +47,13 @@ class MongoDB:
         self.close()
 
     def close(self) -> None:
-        """ Database 객체 소멸
-        """
+        """ Database 객체 소멸"""
         if self._connection:
             self._connection.close()
 
     @property
     def database(self):
-        """get database object"""
+        """Get database object"""
         return self._database
 
     def get_collection_list(self) -> list:
@@ -93,12 +94,12 @@ class Collection(MongoDB):
 
     @property
     def object(self):
-        """get collection object"""
+        """Get collection object"""
         return self._collection
 
     @verify_collection_object
     def show_all_documents(self) -> None:
-        """컬렉션 내 모든 document 출력."""
+        """컬렉션 내 모든 document 출력"""
         cursor = self._collection.find({})
         for item in cursor:
             print(item)
@@ -125,8 +126,8 @@ class Collection(MongoDB):
         """필드명 변경
 
         Args:
-            origin (string): 기존 필드명
-            rename (string): 변경할 필드명
+            origin (str): 기존 필드명
+            rename (str): 변경할 필드명
             filter_query (dict, optional): 필터링. Defaults to "".
         """
         if not filter_query:
@@ -181,14 +182,14 @@ class Collection(MongoDB):
         """문자열을 날짜값으로 변환.
 
         Args:
-            date_time_string (string): YYYYMM 형식의 문자열
+            date_time_string (str): YYYYMM 형식의 문자열
 
         Raises:
             BaseException: 날짜 변환이 실패할 경우
 
         Returns:
             datetime.datetime: 변환된 날짜 데이터
-            None : 파라미터가 잘못될 경우, 날짜 변환이 실패할 경우
+            None: 파라미터가 잘못될 경우, 날짜 변환이 실패할 경우
         """
         if not date_time_string:
             return None
@@ -238,7 +239,7 @@ class Collection(MongoDB):
         """문자열(YYYYMM)로 컬렉션 날짜 데이터 쿼리
 
         Args:
-            start_date_string (str): YYYYMM 형식의 문자열 
+            start_date_string (str): YYYYMM 형식의 문자열
                                     (None일 경우 컬렉션에서 가장 최근 날짜 값 쿼리)
 
         Raises:
@@ -274,7 +275,7 @@ class Collection(MongoDB):
         Args:
             start_date (str, optional): YYYYMM 형식의 문자열
             end_date (str, optional): YYYYMM 형식의 문자열
-            ignore_convert_error(bool, optional) : 문자열 -> 날짜로
+            ignore_convert_error(bool, optional): 문자열 -> 날짜로
                 변환 실패할 경우 쿼리문 생성을 실패 처리하는 Flag. default True.
 
         Returns:
@@ -361,7 +362,7 @@ class Collection(MongoDB):
             ValueError: 쿼리 결과가 없을 경우
 
         Returns:
-            list : 쿼리 결과를 list로 변환
+            list: 쿼리 결과를 list로 변환
         """
         if _check_key_in_dict(data) is False:
             raise ValueError("data not in 'database' or 'collection' key.",
@@ -450,7 +451,7 @@ class Collection(MongoDB):
             ValueError: 쿼리 결과에 columns 키가 없을 경우
 
         Returns:
-            list : 컬럼 리스트
+            list: 컬럼 리스트
         """
         if not table:
             raise ValueError('table is None.',
@@ -494,7 +495,7 @@ class Collection(MongoDB):
         """특정 월별 데이터의 컬럼명을 aggregate하는 기능
 
         Args:
-            data (dict) : 'database', 'collection', 'start_date', 'end_date'
+            data (dict): 'database', 'collection', 'start_date', 'end_date'
 
         Raises:
             ValueError: 파라미터에 필수 key가 없을 경우
@@ -549,9 +550,9 @@ class Collection(MongoDB):
         """모델 컬렉션에 정보 저장.
 
         Args:
-            data (dict) : 'database', 'collection', 'start_date', 'end_date'
-            table (dict) : 'database', 'collection', 'start_date', 'end_date'
-            model (dict) : 'database', 'collection', 'path'
+            data (dict): 'database', 'collection', 'start_date', 'end_date'
+            table (dict): 'database', 'collection', 'start_date', 'end_date'
+            model (dict): 'database', 'collection', 'path'
             model_save_path_list (str): 저장된 모델 경로 리스트
         Raises:
             ValueError: 파라미터가 잘못된 경우
@@ -595,17 +596,17 @@ class Collection(MongoDB):
         """모델 컬렉션에서 정보 쿼리.
 
         Args:
-            model (dict) : 'database', 'collection', 'start_date', 'end_date'
-            table (dict) : 'database', 'collection', 'start_date', 'end_date'
+            model (dict): 'database', 'collection', 'start_date', 'end_date'
+            table (dict): 'database', 'collection', 'start_date', 'end_date'
 
         Raises:
             ValueError: 파라미터가 잘못된 경우
             ValueError: 파라미터에 필수 key가 없을 경우
             ValueError: 쿼리한 모델 데이터가 없는 경우
             ValueError: 쿼리 결과에 path가 없는 경우
-            
+
         Return:
-            list : 모델 파일 경로 list
+            list: 모델 파일 경로 list
         """
         if ((table is None) or (model is None)):
             raise ValueError("Parameters is None.",

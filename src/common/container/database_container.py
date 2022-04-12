@@ -69,7 +69,7 @@ class DataBaseContainer(DataContainer):
             table (dict): 'database', 'collection', 'start_date', 'end_date'
 
         Returns:
-            feature_table : 컬럼 리스트
+            feature_table: 컬럼 리스트
 
         Description:
             table 이 None 일 경우는 x_data의 컬럼으로 데이터가 만들어짐
@@ -93,20 +93,18 @@ class DataBaseContainer(DataContainer):
 
         - parameters
         data 값
-        Key : 'database', 'collection', 'start_date', 'end_date'
-              database : database 명
-              collection : collection 명
-              start_date : 쿼리할 시작 날짜 문자열
-              end_date : 쿼리할 종료 날짜 문자열
-        priority : database, collection -> file 순서로 적용됨
-        
+        Key: 'database', 'collection', 'start_date', 'end_date'
+              database: database 명
+              collection: collection 명
+              start_date: 쿼리할 시작 날짜 문자열
+              end_date: 쿼리할 종료 날짜 문자열
+
         table 값
-        Key : 'database', 'collection', 'start_date', 'end_date'
-              database : database 명
-              collection : collection 명
-              start_date : 쿼리할 시작 날짜 문자열
-              end_date : 쿼리할 종료 날짜 문자열
-        priority : database, collection -> file -> list 순서로 적용됨
+        Key: 'database', 'collection', 'start_date', 'end_date'
+              database: database 명
+              collection: collection 명
+              start_date: 쿼리할 시작 날짜 문자열
+              end_date: 쿼리할 종료 날짜 문자열
         """
         # 파라미터 내 dict의 필수 key값이 있는지 검증.
         if cls.verify(data, table) is False:
@@ -115,7 +113,7 @@ class DataBaseContainer(DataContainer):
 
         # 사용할 데이터 로드.
         x_data, y_data = (None, None)
-        x_data, y_data, _ = cls.get_data(data)
+        x_data, y_data = cls.get_data(data)
         if (x_data is None) or (y_data is None):
             raise Exception('Initialize Data Failed.',
                             get_code_line(inspect.currentframe()))

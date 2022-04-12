@@ -1,0 +1,191 @@
+{% macro group_input(
+  group_text, input_type, input_id=None, input_name=None,
+  min=None, max=None, step=None, value=None, input_class=None, 
+  placeholder=None, max_length=None) -%}
+<div class="input-group mb-3">
+  <div class="input-group-prepend">
+    <span class="input-group-text" 
+    id="inputGroup-sizing-sm">{{group_text}}</span>
+  </div>
+  {{input_component(input_type, input_id, input_name,
+  min, max, step, value, input_class, 
+  placeholder, max_length)}}
+</div>
+{% endmacro %}
+
+{% macro floating_input(
+  label_text, floating_message, error_message,
+  input_type, input_id, input_name=None,
+  min=None, max=None, step=None, value=None, input_class=None, 
+  placeholder=None, max_length=None, invalid_feedback=False) -%}
+<div class="form-floating">
+  {{input_component(input_type, input_id, input_name,
+  min, max, step, value, input_class, 
+  placeholder, max_length, invalid_feedback)}}
+  <label for="{{input_id}}" 
+  message="{{floating_message}}" 
+  error-message="{{error_message}}">{{label_text}}</label>
+</div>
+{% endmacro %}
+
+{% macro input_component(input_type, input_id=None, input_name=None,
+  min=None, max=None, step=None, value=None, input_class=None, 
+  placeholder=None, max_length=None, invalid_feedback=False) -%}
+<input aria-label="Small" aria-describedby="inputGroup-sizing-sm" 
+  class="form-control{% if input_class %} {{input_class}}{% endif %}" 
+  type="{{input_type}}" 
+  {% if input_id %} id="{{input_id}}" {% endif %}
+  {% if min %} min="{{min}}" {% endif %}
+  {% if max %} max="{{max}}" {% endif %}
+  {% if step %} step="{{step}}" {% endif %}
+  {% if input_name %} name="{{input_name}}"{% endif %}
+  {% if value %} value="{{value}}" {% endif %}
+  {% if placeholder %} placeholder="{{placeholder}}" {% endif %}
+  {% if max_length %} maxlength="{{max_length}}" {% endif %} />
+  {% if invalid_feedback == True %} 
+  <div class="invalid-feedback"></div>
+  {% endif %} 
+{% endmacro %}
+
+{% macro floating_input_datalist(
+  label_text, floating_message, error_message,
+  datalist_id, input_id=None, text_lists=None, input_name=None,
+  input_class=None, max_length=None, placeholder=None) -%}
+<div class="form-floating">
+  {{data_list_component(datalist_id, input_id, text_lists, input_name,
+  input_class, max_length, placeholder)}}
+  <label for="{{input_id}}" 
+  message="{{floating_message}}" 
+  error-message="{{error_message}}">{{label_text}}</label>
+</div>
+{% endmacro %}
+
+{% macro group_input_datalist(
+  group_text, datalist_id, input_id=None, text_lists=None, input_name=None,
+  input_class=None, max_length=None, placeholder=None) -%}
+<div class="input-group mb-3">
+  <div class="input-group-prepend">
+    <span class="input-group-text" 
+    id="inputGroup-sizing-sm">{{group_text}}</span>
+  </div>
+  {{data_list_component(datalist_id, input_id, text_lists, input_name,
+  input_class, max_length, placeholder)}}
+</div>
+{% endmacro %}
+
+{% macro data_list_component(datalist_id, input_id=None, text_lists=None, 
+  input_name=None, input_class=None, max_length=None, placeholder=None) -%}
+<input type="text" aria-label="Small" aria-describedby="inputGroup-sizing-sm" 
+  class="form-control{% if input_class %} {{input_class}}{% endif %}"
+  {% if input_name %} name="{{input_name}}" {% endif %}
+  {% if input_id %} id="{{input_id}}" {% endif %}
+  {% if max_length %} maxlength="{{max_length}}" {% endif %}
+  {% if placeholder %} placeholder="{{placeholder}}" {% endif %}
+  list="{{datalist_id}}" />
+<datalist id="{{datalist_id}}">
+  {% if text_lists %}
+    {% for text in text_lists %}
+    <option value="{{text}}">
+    {% endfor %}
+  {% endif %}
+</datalist>
+{% endmacro %}
+
+{% macro checkbox(id, text, name=None, checked=False) -%}
+<div class="custom-control custom-checkbox">
+  <input type="checkbox" class="custom-control-input" 
+  {% if name %} name="{{name}}" {% endif %}
+  id="{{id}}" 
+  {%if checked %} checked="checked" {% endif %} />
+  <label for="{{id}}" class="custom-control-label">{{text}}</label>
+</div>
+{% endmacro %}
+
+{% macro floating_select(
+  lists, label_text, floating_message, error_message, 
+  id, name, selected_text) -%}
+<div class="form-floating">
+  {{select_component(lists, id, name, selected_text)}}
+  <label for="{{id}}" 
+  message="{{floating_message}}" 
+  error-message="{{error_message}}">{{label_text}}</label>
+</div>
+{% endmacro %}
+
+{% macro select_component(lists=None, id=None, name=None, selected_text=None) -%}
+<select class="form-select" aria-label="Default select example"
+ {% if id %} id="{{id}}" {% endif %}
+ {% if name %} name="{{name}}" {% endif %}>
+  <option selected>{% if selected_text %}{{selected_text}}{% endif %}</option>
+  {% if lists %}
+  {% for menu in lists %}
+  <option value="{{menu.text}}" {% if menu.selected %}selected{% endif %}>
+    {{menu.text}}
+  </option>
+  {% endfor %}
+  {% endif %}
+</select>
+{% endmacro %}
+
+{% macro textarea(id='', name='inp', value='', class='') -%}
+<div class="form-group">
+  <textarea {% if id %} id="{{id}}" {% endif %} name="{{name}}" 
+  class="form-control {{class}}">
+    {{value}}
+    </textarea>
+</div>
+{% endmacro %}
+
+{% macro radio(id, name, value='', text='', checked='', class='') -%}
+<div class="form-check">
+  <input type="radio" class="custom-control-input {{class}}" 
+  name="{{name}}" id="{{id}}" value="{{value}}" {{checked}} />
+  <label class="custom-control-label" for="{{id}}">
+    {{text}}
+  </label>
+</div>
+{% endmacro %}
+
+{% macro radios(lst, class='') -%}
+<div class="form-group">
+  {% for r in lst %}
+  {{radio(r.id, r.name, r.value, r.text, r.checked)}}
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro modal(id, title, icon, isShowFooter=True, ok_fn='') %}
+<div class="modal fade" id="{{id}}" tabindex="-1" role="dialog" 
+aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <strong>
+            {% if icon %}
+            <i class="{{icon}}"></i>
+            {% endif %}
+            {{title}}
+          </strong>
+        </h3>
+        <button type="button" class="close" data-dismiss="modal" 
+        aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        {{caller()}}
+        </form>
+      </div>
+      {% if isShowFooter %}
+      <div class="modal-footer">
+        <button type='button' class="btn btn-secondary" 
+        data-dismiss="modal">취소</button>
+        <button type='button' class="btn btn-primary" 
+        onclick="{{ok_fn}}">확인</button>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endmacro %}

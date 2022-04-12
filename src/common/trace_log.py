@@ -72,7 +72,7 @@ class TraceLog:
             log_file_name = get_log_file_name()
         cls.initialize_with_log_file_name(
             log_file_name=log_file_name, logger_name=logger_name)
-        
+
     @classmethod
     def initialize_with_log_file_name(
         cls, log_file_name: str, logger_name: str=__name__) -> None:

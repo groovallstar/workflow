@@ -1,0 +1,54 @@
+{% from "macro/components.html" import floating_input, floating_input_datalist %}
+{% from "macro/components.html" import checkbox, floating_select %}
+
+{% block column %}
+{% for col in row.column_list %}
+  {% if row.column_class %}
+  <div class="{{row.column_class}}">
+  {% else %}
+  <div class="col-md">
+  {% endif %} {# row.column_class #}
+    {% if col.type == 'input' %}
+      {{floating_input(
+        label_text=col.label_text,
+        floating_message=col.floating_message,
+        error_message=col.error_message,
+        input_type=col.input_type,
+        input_id=col.input_id,
+        input_name=col.input_name,
+        input_class=col.input_class,
+        value=col.value,
+        min=col.min, 
+        max=col.max, 
+        step=col.step,
+        max_length=col.max_length,
+        placeholder=col.placeholder,
+        invalid_feedback=col.invalid_feedback)
+      }}
+    {% elif col.type == 'input_datalist' %}
+      {{floating_input_datalist(
+        label_text=col.label_text,
+        floating_message=col.floating_message, 
+        error_message=col.error_message, 
+        datalist_id='%s-%s'|format(col.datalist_id, loop.index),
+        input_name=col.input_name,
+        input_class=col.input_class,
+        input_id=col.input_id,
+        text_lists=None,
+        max_length=col.max_length,
+        placeholder=col.placeholder)
+      }}
+    {% elif col.type == 'checkbox' %}
+      {{checkbox(
+        id=col.id, name=col.name, text=col.text, checked=col.checked)
+      }}
+    {% elif col.type == 'select' %}
+      {{floating_select(
+        lists=col.select_list, label_text=col.label_text,
+        floating_message=col.floating_message,
+        error_message=col.error_message, 
+        name=col.select_name, id=col.id, selected_text=col.selected_text)}}
+    {% endif %}
+  </div> {# col #}
+{% endfor %} {# loop column_list #}
+{% endblock %}

@@ -6,6 +6,7 @@ RUN apt-get clean
 RUN apt-get update && \
     apt-get install -y \
     git \
+    openssh-server \
     liblzma-dev \
     libbz2-dev
 
@@ -26,6 +27,29 @@ RUN make install
 # default python version set
 RUN update-alternatives --install /usr/bin/python python /usr/local/bin/python3.8 1
 
+COPY .env .
+RUN source .env && \
+    echo "export PYTHONPATH=${PYTHONPATH}" >> ~/.profile && \
+    echo "export MONGODB_URL=${MONGODB_URL}" >> ~/.profile && \
+    echo "export MLFLOW_URL=${MLFLOW_URL}" >> ~/.profile && \
+    echo "export REDIS_HOST_IP=${REDIS_HOST_IP}" >> ~/.profile && \
+    echo "export CELERY_BROKER_URL=${CELERY_BROKER_URL}" >> ~/.profile && \
+    echo "export CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}" >> ~/.profile && \
+    echo "export C_FORCE_ROOT=${C_FORCE_ROOT}" >> ~/.profile && \
+    echo "export LC_ALL=${LC_ALL}" >> ~/.profile && \
+    echo "export LANG=${LANG}" >> ~/.profile
+
 # pip install list
-COPY requirements.txt .
+COPY ./sklearn/requirements.txt .
 RUN pip install -r requirements.txt
+
+#set password
+RUN echo 'root:root'|chpasswd
+
+#replace sshd_config
+RUN sed -ri 's/^#?PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
+
+#make .ssh
+RUN mkdir /root/.ssh
+RUN service ssh start

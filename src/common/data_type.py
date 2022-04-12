@@ -133,11 +133,5 @@ class BestModelScoreInfo:
     each_best_f1_score: List[ScoreInfo] = field(default_factory=list)
     """각 모델마다 가장 높은 F1-Score 정보"""
 
-    each_best_roc_auc_score: List[ScoreInfo] = field(default_factory=list)
-    """각 모델마다 가장 높은 ROC-AUC 정보"""
-
     highest_f1: ScoreInfo = field(default_factory=ScoreInfo)
     """모델 중에서 가장 높은 F1-Score 를 가진 모델 정보"""
-
-    highest_roc_auc: ScoreInfo = field(default_factory=ScoreInfo)
-    """모델 중에서 가장 높은 ROC-AUC 를 가진 모델 정보"""

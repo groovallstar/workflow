@@ -1,0 +1,58 @@
+{% from "macro/components.html" import floating_input, floating_input_datalist %}
+{% from "macro/components.html" import checkbox, floating_select %}
+
+{# 전체 페이지의 card list #}
+{% for page_card in page_card_list %}
+<div class="row justify-content-center mg-tp-bt-20">
+  <div class="col-sm-8">
+    <div class="card" 
+    {% if page_card.card_id %}id="{{page_card.card_id}}"{% endif %}>
+      <div class="card-header">
+        {% if page_card.header_strong %}
+        <strong>{{page_card.header_strong}}</strong> 
+        {% endif %}
+        {% if page_card.header_small %}
+        <small>{{page_card.header_small}}</small>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        {# 페이지 내부의 각각 card list #}
+        {% for card in page_card.row_list %}
+        <div class="row mg-tp-bt-20">
+          <div class="col">
+            <div class="card">
+              {% if card.header_small %}
+              <div class="card-header">
+                <small>{{card.header_small}}</small>
+              </div>
+              {% endif %}
+              <div class="card-body">
+                {# 하나의 card 내 row list #}
+                {% for row in card.row_list %}
+                  <div class="row">
+                    {% if row.label_text %}
+                    <label>{{row.label_text}}</label>
+                    {% endif %}
+                    {% include "macro/column.html" ignore missing %}
+                  </div> {# row #}
+                  {% if row.hr == True %}<hr>{% endif %}
+                  {% if row.p == True %}<p></p> {% endif %}
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="card-footer">
+        <button class="btn btn-sm btn-primary" 
+        onclick="BtnAddClick('{{page_card.add_btn_param_name}}')">
+        {% if page_card.footer_btn_name %}
+        {{page_card.footer_btn_name}}
+        {% endif %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}

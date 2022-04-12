@@ -26,7 +26,6 @@ services:
       container_name: mlflow_server
       env_file:
         - .env
-        - ../.env
       expose:
         - ${MLFLOW_PORT}
       networks:

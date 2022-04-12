@@ -11,21 +11,20 @@
 ## MLFlow ##
 - .env
     - Database 정보, MLFlow Port 정보
-- mlflow/docker-compose.yml
     - ${MLFLOW_DATABASE_PATH}: MySQL 저장 Host Volume 정보
     - ${MLFLOW_RUNS_PATH}: MLFlow Experiment 저장 Host Volume 정보
 
 ## MongoDB ##
 
-- mongo/docker-compose.yml
-    - : MongoDB Replication 저장 Host Volume 정보
-        - ${MONGODB_REPL_1_PATH}
-        - ${MONGODB_REPL_2_PATH}
-        - ${MONGODB_REPL_3_PATH}
+- mongo/.env
+    - MongoDB Replication 저장 Host Volume 정보
+        - ${MONGODB_REPL_1_PATH}: Master Replication Database Volume
+        - ${MONGODB_REPL_2_PATH}: Slave Replication Database Volume
+        - ${MONGODB_REPL_3_PATH}: Slave Replication Database Volume
 
 ## Sacred + Omniboard ##
 
-- sacred/docker-compose.yml
+- sacred/.env
     - ${SACRED_DATABASE_PATH}: Sacred Experiment 저장 Host Volume 정보
 
 - sacred/omniboard/config.json

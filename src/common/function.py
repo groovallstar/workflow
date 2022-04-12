@@ -19,6 +19,14 @@ def singleton(class_):
     class_w.__name__ = class_.__name__
     return class_w
 
+from typing import Union
+def _validate(obj: dict, key_name: str) -> Union[str, None]:
+    """dictinary 에 key 가 있는지 체크."""
+    if (isinstance(obj, dict) and (key_name in obj)):
+        return obj[key_name]
+    else:
+        return None
+    
 def timeit(method):
     """함수 종료 시간 측정"""
     import functools
@@ -43,7 +51,7 @@ def get_code_line(frame) -> tuple:
         frame (inspect.currentframe): inspect 객체의 currentframe() 호출 결과
 
     Returns:
-        string: 코드 위치, 코드 라인
+        str: 코드 위치, 코드 라인
     """
     # __FILE__
     file_name = frame.f_code.co_filename
@@ -123,9 +131,9 @@ def apply_standard_scaler_to_train_data(
         학습 데이터 set 에 Scaler 적용
 
         - parameters
-        scaler : 데이터에 적용할 scaler object
-        x_train, x_validation, x_test : log 함수 및 scaler 적용할 DataFrame
-        log_function (bool) : True=numpy.log1p 적용, False=미적용
+        scaler: 데이터에 적용할 scaler object
+        x_train, x_validation, x_test: log 함수 및 scaler 적용할 DataFrame
+        log_function (bool): True=numpy.log1p 적용, False=미적용
 
         - description
         검증/테스트 데이터에는 transform() API만 적용 해야함.
@@ -215,9 +223,9 @@ def apply_standard_scaler_to_test_data(x_test, scaler_file_path: str):
         예측 데이터 set 에 Scaler 적용
 
         - parameters
-        scaler : 데이터에 적용할 scaler object
-        x_data : log 함수 및 scaler 적용할 DataFrame
-        log_function (bool) : True=numpy.log1p 적용, False=미적용
+        scaler: 데이터에 적용할 scaler object
+        x_data: log 함수 및 scaler 적용할 DataFrame
+        log_function (bool): True=numpy.log1p 적용, False=미적용
 
         - description
         학습에 사용했던 scaler object를 사용해야함
@@ -235,7 +243,8 @@ def apply_standard_scaler_to_test_data(x_test, scaler_file_path: str):
             if isinstance(x_data, pd.DataFrame):
                 log1p_data = pd.DataFrame(
                     None,
-                    columns=x_data.columns if x_data.columns is not None else None)
+                    columns=x_data.columns \
+                        if x_data.columns is not None else None)
                 for i in x_data.columns:
                     log1p_data[i] = x_data.loc[:, i].map(
                         lambda x: np.log1p(x) if x > 0 else 0)
@@ -251,11 +260,11 @@ def apply_standard_scaler_to_test_data(x_test, scaler_file_path: str):
         # scaler 적용.
         if isinstance(x_data, pd.DataFrame):
             x_data = pd.DataFrame(
-                scaler.transform(x_data), 
+                scaler.transform(x_data),
                 columns=x_data.columns if x_data.columns is not None else None)
         else:
             # 리스트 형태는 2차원으로 변경해야함
-            x_data = np.reshape(x_data, (-1, 1))  
+            x_data = np.reshape(x_data, (-1, 1))
             x_data = scaler.transform(x_data)
 
         return x_data
@@ -268,9 +277,9 @@ def find_bayesian_optimizer(
 
     Args:
         pipeline_object (sklearn.pipeline): pipeline 객체
-        search_parameters : bayesian parameter
-        x_train : 학습할 x 데이터
-        y_train : 학습할 y 데이터
+        search_parameters: bayesian parameter
+        x_train: 학습할 x 데이터
+        y_train: 학습할 y 데이터
 
     Raises:
         BufferError: Classifier or Model Dict 가 비어 있을 경우
@@ -279,7 +288,7 @@ def find_bayesian_optimizer(
         BufferError: 베이지안 최적화 파라미터가 없을 경우
 
     Returns:
-        Dict : 하이퍼 파라미터 정보
+        Dict: 하이퍼 파라미터 정보
     """
     def evaluate_procedure(**bayesian_params) -> float:
         """최적화 계산할 함수

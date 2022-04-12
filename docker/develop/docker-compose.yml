@@ -1,0 +1,44 @@
+version: '3.3'
+
+services:
+  sklearn_develop:
+    extends:
+      file: common-compose.yml
+      service: sklearn
+    container_name: sklearn_develop
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: ./sklearn/dockerfile
+    shm_size: '20gb' # using ray shared memory option.
+    ports:
+      - '2221:22'
+    command:
+      - /bin/bash
+      - -c
+      - |
+        /usr/sbin/sshd
+        cd ${PYTHONPATH}/celery
+        ./run-celery.sh
+
+  flask_develop:
+    container_name: flask_develop
+    extends:
+      file: common-compose.yml
+      service: flask
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: ./flask/dockerfile
+    ports:
+      - 0.0.0.0:5500:5500
+      - '2222:22'
+    command:
+      - /bin/bash
+      - -c
+      - |
+        /usr/sbin/sshd
+        cd ${PYTHONPATH}/web
+        ./run-flask.sh

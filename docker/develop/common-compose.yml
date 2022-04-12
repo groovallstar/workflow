@@ -6,7 +6,7 @@ services:
     env_file:
       - .env
     volumes:
-      - /workflow:/workflow
+      - workflow:/workflow
       - /tmp:/tmp
       - ${MLFLOW_RUNS_PATH}:/mlruns
 
