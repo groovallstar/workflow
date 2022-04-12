@@ -14,19 +14,19 @@ Workflow
 - src/scripts/insert_table.sh
     - sklearn Toy dataset의 column 정보를 Database에 추가
     - 실행 Parameter 
-        - --data={'database': '데이터가 저장된 database 명',
-                  'collection': '데이터가 저장된 collection 명', 
+        - --data={'database': '데이터가 저장된 database 명',   
+                  'collection': '데이터가 저장된 collection 명',   
                   'start_date': '시작날짜', 'end_date': '종료날짜'}
-        - --table={'database': 'column을 저장할 database 명',
+        - --table={'database': 'column을 저장할 database 명',   
                    'collection': 'column을 저장할 collection 명'}
 
 - src/scripts/train.sh, src/scripts/predict.sh
     - 각 dataset 학습/검증/예측/모델 로드/모델 저장
     - 실행 Parameter
-        - --data={'database': 'database명', 'collection': 'collection명',
+        - --data={'database': 'database명', 'collection': 'collection명',   
                 'start_date': '시작날짜', 'end_date': '종료날짜'}
 
-        - --table={'database': 'database명', 'collection': 'collection명',
+        - --table={'database': 'database명', 'collection': 'collection명',   
                 'start_date': '시작날짜', 'end_date': '종료날짜'}
 
         - --experiment=실험 결과가 기록될 MLflow Experiment 명
@@ -38,7 +38,7 @@ Workflow
         - --classification_file_name=dataset에서 사용할 모델 및 Hyper Parameter 정보 파일명
         
         - --train=학습
-        - --load_model={'database': 'database명', 'collection': 'collection명', 
+        - --load_model={'database': 'database명', 'collection': 'collection명',   
                         'start_date': '시작날짜', 'end_date': '종료날짜'}
             - 'database', 'collection' 값을 통해 database 로부터 모델 로드
         
