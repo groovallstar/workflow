@@ -81,10 +81,6 @@ class Classifier:
                     clf[cls.RANDOMFOREST]['hyper_parameter']
                 randomforest[cls.Index.HYPER_PARAMETER]['clf__random_state']=\
                     seed
-                # Set multiprocessing.
-                import multiprocessing
-                n_cpu = multiprocessing.cpu_count() - 1
-                randomforest[cls.Index.HYPER_PARAMETER]['clf__n_jobs'] = n_cpu
 
                 randomforest[cls.Index.BAYESIAN_PARAMETER]=\
                     clf[cls.RANDOMFOREST]['bayesian_parameter']
