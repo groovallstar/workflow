@@ -33,7 +33,7 @@ services:
       context: .
       dockerfile: ./flask/dockerfile
     ports:
-      - 0.0.0.0:5500:5500
+      - '5500:5500'
       - '2222:22'
     command:
       - /bin/bash
