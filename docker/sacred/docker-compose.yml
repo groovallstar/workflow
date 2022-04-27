@@ -4,7 +4,7 @@ services:
   mongo:
     image: mongo
     ports:
-      - '37017:37017'
+      - '27017:27017'
     volumes:
       - ${SACRED_DATABASE_PATH}:/data/db
     env_file: 

@@ -1,10 +1,10 @@
 {
     "db1": {
-      "mongodbURI": "mongodb://root:root@${HOST_IP}:37017/db1?authSource=admin",
+      "mongodbURI": "mongodb://root:root@${HOST_IP}:27017/db1?authSource=admin",
       "path": "/db1"
     },
     "db2": {
-      "mongodbURI": "mongodb://root:root@${HOST_IP}:37017/db2?authSource=admin",
+      "mongodbURI": "mongodb://root:root@${HOST_IP}:27017/db2?authSource=admin",
       "path": "/db2"
     }
 }

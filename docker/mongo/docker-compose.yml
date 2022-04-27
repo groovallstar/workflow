@@ -3,7 +3,7 @@ services:
   mongo1:
     image: "mongo"
     ports:
-      - "27017:27017"
+      - "37017:27017"
     env_file:
       - .env
     volumes:
@@ -14,7 +14,7 @@ services:
   mongo2:
     image: "mongo"
     ports:
-      - "27018:27017"
+      - "37018:27017"
     env_file:
       - .env
     volumes:
@@ -27,7 +27,7 @@ services:
   mongo3:
     image: "mongo"
     ports:
-      - "27019:27017"
+      - "37019:27017"
     env_file:
       - .env
     volumes:
