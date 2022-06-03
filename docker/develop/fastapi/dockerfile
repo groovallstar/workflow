@@ -1,31 +1,19 @@
-FROM yankovg/python3.8.2-ubuntu18.04:latest
+FROM silverlogic/python3.8
 
 SHELL ["/bin/bash", "-c"]
 
 RUN apt-get clean
 RUN apt-get update && \
-    apt-get install -y \
-    git \
-    openssh-server \
-    liblzma-dev \
-    libbz2-dev
+    apt-get install -y git \
+        openssh-server \
+        liblzma-dev \
+        libbz2-dev
 
 # timezone
 RUN export DEBIAN_FRONTEND=noninteractive
 RUN ln -fs /usr/share/zoneinfo/Asia/Seoul /etc/localtime
 RUN apt-get install -y tzdata
 RUN dpkg-reconfigure --frontend noninteractive tzdata
-
-# python recompile (_bz error, lzma warning)
-RUN wget https://www.python.org/ftp/python/3.8.2/Python-3.8.2.tgz
-RUN tar xvfz Python-3.8.2.tgz
-WORKDIR /Python-3.8.2
-RUN ./configure --enable-optimizations
-RUN make
-RUN make install
-
-# default python version set
-RUN update-alternatives --install /usr/bin/python python /usr/local/bin/python3.8 1
 
 COPY .env .
 RUN source .env && \
@@ -35,11 +23,14 @@ RUN source .env && \
     echo "export CELERY_BROKER_URL=${CELERY_BROKER_URL}" >> ~/.profile && \
     echo "export CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}" >> ~/.profile && \
     echo "export C_FORCE_ROOT=${C_FORCE_ROOT}" >> ~/.profile && \
-    echo "export LC_ALL=${LC_ALL}" >> ~/.profile && \
-    echo "export LANG=${LANG}" >> ~/.profile
+    echo "export FASTAPI_PORT=$FASTAPI_PORT" >> ~/.profile \
+    echo "export REDIS_SUBSCRIBE_CHANNEL=$REDIS_SUBSCRIBE_CHANNEL" >> ~/.profile \
+    echo "export LC_ALL=$LC_ALL" >> ~/.profile && \
+    echo "export LANG=$LANG" >> ~/.profile
 
 # pip install list
-COPY ./flask/requirements.txt .
+COPY ./fastapi/requirements.txt .
+RUN python -m pip install --upgrade pip
 RUN pip install -r requirements.txt
 
 #set password

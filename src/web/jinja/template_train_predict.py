@@ -93,15 +93,11 @@ class TrainPredictId:
         self._attributes['split_ratio']['test'] = \
             TrainPredictId.all_prefix + 'split-ratio-test'
 
-    def get_element_ids(self):
-        """Generator Element Id (database, collection)"""
-        yield self._attributes['data']['database']
+    def get_collection_element_ids(self):
+        """Generator Collection Element Id"""
         yield self._attributes['data']['collection']
-        yield self._attributes['table']['database']
         yield self._attributes['table']['collection']
-        yield self._attributes['load_model']['database']
         yield self._attributes['load_model']['collection']
-        yield self._attributes['save_model']['database']
         yield self._attributes['save_model']['collection']
 
     @property
@@ -510,11 +506,11 @@ class TrainPredictPage():
 
         element_list = TrainPredictElementList()
         self._card_list.append(
-            Card(card_id=PageName.TRAIN_PREDICT,
+            Card(card_id=PageName.TRAIN_PREDICT.value,
                  header_strong='Train / Predict',
                  header_small='',
                  footer_btn_name='ADD',
-                 add_btn_param_name=PageName.TRAIN_PREDICT,
+                 add_btn_param_name=PageName.TRAIN_PREDICT.value,
                  row_list=element_list.card_list))
 
     @property

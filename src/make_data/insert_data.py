@@ -28,11 +28,9 @@ def procedure(
             raise ValueError("Invalid Parameter.")
 
         collection = Collection(database, collection)
-        date = Collection.convert_string_to_datetime(
-            date_time_string=date_time)
+        date = Collection.convert_datetime(date_time_string=date_time)
         if not date:
-            raise ValueError("convert_string_to_datetime failed."
-                            f" date={date_time}")
+            raise ValueError(f"convert_datetime failed. date={date_time}")
         item['date'] = date
         result = collection.find_one_and_replace(item, item, upsert=True)
         if result:

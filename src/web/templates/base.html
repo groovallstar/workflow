@@ -9,13 +9,13 @@
   <link rel="shortcut icon" href="#">
   <!-- Bootstrap core CSS -->
   <link rel="stylesheet" 
-  href="{{ url_for('static', filename='bootstrap/css/bootstrap.min.css') }}">
+  href="{{ url_for('static', path='/bootstrap/css/bootstrap.min.css') }}">
   <!-- Material Design Bootstrap -->
   <link rel="stylesheet" 
-  href="{{ url_for('static', filename='bootstrap/css/mdb.min.css') }}">
+  href="{{ url_for('static', path='/bootstrap/css/mdb.min.css') }}">
   <!-- Your custom styles (optional) -->
   <link rel="stylesheet" 
-  href="{{ url_for('static', filename='css/style.css') }}">
+  href="{{ url_for('static', path='/css/style.css') }}">
 </head>
 <body>
   <header>
@@ -29,7 +29,7 @@
     </div>
     <!-- floating button -->    
     <button class="btn btn-primary btn-sm float pt-nav-collapse-hide" 
-    id="btn-show-task-list" onclick="ToggleTaskListButton(this)">
+    id="btn-show-task-list" onclick="toggleTaskListButton(this)">
       Show Task
     </button>
     <footer class="row flex-shrink-0 overflow-auto d-none">
@@ -39,18 +39,18 @@
     </footer>
   </main>
   <script type="text/javascript" 
-  src="{{url_for('static', filename='jquery/jquery-3.6.0.min.js')}}"></script>
+  src="{{url_for('static', path='/jquery/jquery-3.6.0.min.js')}}"></script>
   <script type="text/javascript" 
-  src="{{url_for('static', filename='bootstrap/js/bootstrap.min.js')}}"></script>
+  src="{{url_for('static', path='/bootstrap/js/bootstrap.min.js')}}"></script>
   <script type="text/javascript"
-  src="{{url_for('static', filename='js/uuidv4.min.js')}}"></script>
+  src="{{url_for('static', path='/js/uuidv4.min.js')}}"></script>
   <script type="text/javascript"
-  src="{{url_for('static', filename='js/function.js')}}"></script>
+  src="{{url_for('static', path='/js/function.js')}}"></script>
   <script type="text/javascript"
-  src="{{url_for('static', filename='js/procedure.js')}}"></script>
+  src="{{url_for('static', path='/js/procedure.js')}}"></script>
   <script type="text/javascript"
-  src="{{url_for('static', filename='js/pages.js')}}"></script>
+  src="{{url_for('static', path='/js/pages.js')}}"></script>
   <script type="text/javascript"
-  src="{{url_for('static', filename='js/script.js')}}"></script>
+  src="{{url_for('static', path='/js/script.js')}}"></script>
 </body>
 </html>

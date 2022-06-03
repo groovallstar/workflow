@@ -1,7 +1,6 @@
 'use strict';
 
-function SelectChangeProcedure(event, elementName) {
-
+function selectChangeProcedure(event, elementName) {
   if ((!event) || (!elementName)) {
     return false;
   }
@@ -36,134 +35,112 @@ function SelectChangeProcedure(event, elementName) {
   if (startDateValue) sendData['start_date'] = startDateValue;
   if (endDateValue) sendData['end_date'] = endDateValue;
 
+  // ajax 결과에 따라 element 처리.
+  let applyValidationResult = (isValid) => {
+    if (isValid == true) {
+      // 유효성 체크 성공.
+      removeClassList(
+        [$dbSelect, $colSelect, $startDateSelect, $endDateSelect],
+        "is-invalid");
+      removeErrorMessage($this);
+    } else {
+      // 유효성 체크 실패.
+      initSelectList([$colSelect, $startDateSelect, $endDateSelect]);
+      addClassList(
+        [$dbSelect, $colSelect, $startDateSelect, $endDateSelect],
+        "is-invalid");
+      addErrorMessage($this);
+    }
+  };
+
   // 각 select에 값이 없을 경우
   if (Object.keys(sendData).length == 0) {
-
     // 각 select 초기화
-    InitSelectList([$colSelect, $startDateSelect, $endDateSelect]);
-    RemoveClassList(
-      [$dbSelect, $colSelect, $startDateSelect, $endDateSelect],
-      "is-invalid");
-    RemoveErrorMessage($this);
-    return false;
+    initSelectList([$colSelect, $startDateSelect, $endDateSelect]);
+    applyValidationResult(true);
+    return true;
   }
 
   // 2개 또는 4개 컬럼에 모두 값이 있을 때는 개수 체크함.
   if (Object.keys(sendData).length === $column.length) {
-
-    CallAjax("count", "GET", sendData,
+    callAjax("count", "GET", "", sendData,
       (responseData) => {
-        let isValid = true;
-        if (!responseData) {
-          isValid = false;
-
-        } else {
-          if (responseData.hasOwnProperty("count")) {
-            //console.log("count:(",responseData["count"],")");
-            if (responseData["count"] > 0) {
-              isValid = true;
-            } else {
-              isValid = false;
-            }
-          }
-        }
-
         // 유효성 체크 성공.
-        if (isValid == true) {
-          RemoveClassList(
-            [$dbSelect, $colSelect, $startDateSelect, $endDateSelect],
-            "is-invalid");
-          RemoveErrorMessage($this);
+        applyValidationResult(true);
+      }, (responseData) => {
+        // 유효성 실패. 
+        applyValidationResult(false);
+      }); // callAjax.
+    return true;
+  }
 
+  // collection 정보는 모든 collection을 보여주지 않고
+  // database와 연관된 collection 만 보여줌.
+  if ((Object.keys(sendData).length == 1) &&
+      (sendData.hasOwnProperty("database"))) {
+    // element id를 통해 어떤 collection을 보여줄지 결정함.
+    sendData["element_id"] = $this.attr("id");
+    callAjax("sel_list_col", "GET", "", sendData,
+      (responseData) => {
+        if (responseData) {
+          $colSelect.html($("<option selected></option>"));
+          $.each(responseData, function (key, value) {
+            $colSelect.append($("<option></option>").text(value));
+          });
+          initSelectList([$startDateSelect, $endDateSelect]);
+
+          // 유효성 체크 성공.
+          applyValidationResult(true);
         } else {
           // 유효성 실패. 
-          InitSelectList([$colSelect, $startDateSelect, $endDateSelect]);
-          AddClassList(
-            [$dbSelect, $colSelect, $startDateSelect, $endDateSelect],
-            "is-invalid");
-          AddErrorMessage($this);
+          applyValidationResult(false);
         }
-      }); // CallAjax.
-
+      }, (responseData) => {
+        // 유효성 실패. 
+        applyValidationResult(false);
+      }); // callAjax.
     return true;
-
-  } else {
-
-    // collection 명을 제한하기 위해 추가로 id 전달.
-    sendData["id"] = $this.attr("id");
-    CallAjax("lists", "GET", sendData,
-      (responseData) => {
-
-        let isValid = true;
-        if (!responseData) {
-          isValid = false;
-
-        } else {
-          if (responseData.hasOwnProperty("collection")) {
-            // 컬렉션 목록
-            if (responseData["collection"].length === 0) {
-              isValid = false;
-            } else {
-              if ($colSelect.length > 0) {
-                $colSelect.html($("<option selected></option>"));
-                $.each(responseData['collection'], function (key, value) {
-                  $colSelect.append($("<option></option>").text(value));
-                });
-              }
-              InitSelectList([$startDateSelect, $endDateSelect]);
-            }
-          } else if (responseData.hasOwnProperty("start_date")) {
-            // 시작날짜
-            if (responseData["start_date"].length === 0) {
-              isValid = false;
-            } else {
-              if ($startDateSelect.length > 0) {
-                $startDateSelect.html($("<option selected></option>"));
-                $.each(responseData['start_date'], function (key, value) {
-                  $startDateSelect.append(
-                    $("<option></option>").text(new Date(value).yyyymm()));
-                });
-                InitSelectList([$colSelect, $endDateSelect]);
-              }
-            }
-          } else if (responseData.hasOwnProperty("end_date")) {
-            // 종료날짜
-            if (responseData["end_date"].length === 0) {
-              isValid = false;
-            } else {
-              if ($endDateSelect.length > 0) {
-                $endDateSelect.html($("<option selected></option>"));
-                $.each(responseData['end_date'], function (key, value) {
-                  $endDateSelect.append(
-                    $("<option></option>").text(new Date(value).yyyymm()));
-                });
-                InitSelectList([$colSelect, $startDateSelect]);
-              }
-            }
-          }
-        }
-
-        // 유효성 체크 성공.
-        if (isValid == true) {
-          RemoveClassList(
-            [$dbSelect, $colSelect, $startDateSelect, $endDateSelect],
-            "is-invalid");
-          RemoveErrorMessage($this);
-
-        } else {
-          // 유효성 실패.
-          AddClassList(
-            [$dbSelect, $colSelect, $startDateSelect, $endDateSelect],
-            "is-invalid");
-          AddErrorMessage($this);
-
-          InitSelectList([$colSelect, $startDateSelect, $endDateSelect]);
-        }
-      }); // lists CallAjax.
   }
+
+  // 시작, 종료 날짜 리스트 쿼리
+  callAjax("sel_list_date", "GET", "application/json", sendData,
+  (responseData) => {
+    let isValid = false;
+    if ((responseData) && (responseData.hasOwnProperty("start_date"))) {
+      // 시작날짜
+      if ($startDateSelect.length > 0) {
+        $startDateSelect.html($("<option selected></option>"));
+        $.each(responseData['start_date'], function (key, value) {
+          $startDateSelect.append(
+            $("<option></option>").text(new Date(value).yyyymm()));
+        });
+        initSelectList([$colSelect, $endDateSelect]);
+        isValid = true;
+      }
+    } else if ((responseData) && (responseData.hasOwnProperty("end_date"))) {
+      // 종료날짜
+      if ($endDateSelect.length > 0) {
+        $endDateSelect.html($("<option selected></option>"));
+        $.each(responseData['end_date'], function (key, value) {
+          $endDateSelect.append(
+            $("<option></option>").text(new Date(value).yyyymm()));
+        });
+        initSelectList([$colSelect, $startDateSelect]);
+        isValid = true;
+      }
+    } else {
+      isValid = false;
+    }
+    
+    // 유효성 체크 결과를 element에 적용
+    applyValidationResult(isValid);
+
+  }, (responseData) => {
+    applyValidationResult(false);
+  }); // lists callAjax.
 }
 
-const ThresholdFocusOutProcedure = {
+const thresholdFocusOutProcedure = {
   "keypress": function (event) {
     if (event.which < 48 || event.which > 57) {
       if ((event.which != 46) && (event.which != 44) && (event.which != 32)) {
@@ -179,8 +156,8 @@ const ThresholdFocusOutProcedure = {
     let value = $(this).val().trim();
     // 정규표현식에 맞지 않을 경우
     if (!pattern.test(value)) {
-      AddClass($(this), "is-invalid");
-      AddErrorMessage($(this));
+      addClass($(this), "is-invalid");
+      addErrorMessage($(this));
       return;
     }
 
@@ -204,18 +181,18 @@ const ThresholdFocusOutProcedure = {
     }
 
     if (!isValid) {
-      AddClass($(this), "is-invalid");
-      AddErrorMessage($(this));
+      addClass($(this), "is-invalid");
+      addErrorMessage($(this));
       return false;
     }
-    RemoveClass($(this), "is-invalid");
-    RemoveErrorMessage($(this));
+    removeClass($(this), "is-invalid");
+    removeErrorMessage($(this));
     return true;
   }
 };
 
-const EtcInputProcedure = {
-  "keypress": NumberInputKeyPressCheck,
+const etcInputProcedure = {
+  "keypress": numberInputKeyPressCheck,
   "focusout": function (event) {
     let thisValue = parseFloat($(this).val());
     let maxValue = parseFloat($(this).prop("max"));
@@ -224,7 +201,7 @@ const EtcInputProcedure = {
       maxValue = Number(maxValue).toFixed(1);
     }
     if (thisValue > maxValue) {
-      AddClass($(this), "is-invalid");
+      addClass($(this), "is-invalid");
       // div의 invalid-feedback가 추가되어 있으면
       // class에 is-invalid 추가 시 해당 input 아래에 보이게 됨
       let errorMessage = $(this).nextAll("label").attr("error-message");
@@ -233,16 +210,16 @@ const EtcInputProcedure = {
           maxValue + ' ' + errorMessage);
       }
     } else {
-      RemoveClass($(this), "is-invalid");
+      removeClass($(this), "is-invalid");
     }
   }
 };
 
-function SplitValidation(event, id) {
+function splitValidation(event, id) {
 
   if (!id.hasOwnProperty("split_ratio")) {
-    AddClass($testInput, "is-invalid");
-    AddErrorMessage($thisSelector);
+    addClass($testInput, "is-invalid");
+    addErrorMessage($thisSelector);
     return false;
   }
 
@@ -254,8 +231,8 @@ function SplitValidation(event, id) {
   if ((!$trainInput.length) ||
     (!$validationInput.length) ||
     (!$testInput.length)) {
-    AddClass($testInput, "is-invalid");
-    AddErrorMessage($thisSelector);
+    addClass($testInput, "is-invalid");
+    addErrorMessage($thisSelector);
     return false;
   }
 
@@ -271,14 +248,14 @@ function SplitValidation(event, id) {
     ($testInput.val() == "")) {
 
     if (mlTypeValue == SelectedMlType.PREDICT) {
-      AddClass($testInput, "is-invalid");
-      AddErrorMessage($thisSelector);
+      addClass($testInput, "is-invalid");
+      addErrorMessage($thisSelector);
       return false;
     }
-    RemoveClassList(
+    removeClassList(
       [$trainInput, $validationInput, $testInput],
       "is-invalid");
-    RemoveErrorMessage($thisSelector);
+    removeErrorMessage($thisSelector);
     return true;
   }
 
@@ -307,14 +284,14 @@ function SplitValidation(event, id) {
     if ((total > 0) && (total != 1.0)) {
 
       if (mlTypeValue == SelectedMlType.TRAIN) {
-        AddClassList(
+        addClassList(
           [$trainInput, $validationInput, $testInput],
           "is-invalid");
-        AddErrorMessage($thisSelector);
+        addErrorMessage($thisSelector);
 
       } else {
-        AddClass($testInput, "is-invalid");
-        AddErrorMessage($thisSelector);
+        addClass($testInput, "is-invalid");
+        addErrorMessage($thisSelector);
       }
       return false;
     } else {
@@ -324,19 +301,19 @@ function SplitValidation(event, id) {
       // 2. train 값이 0 이고, validation+test 값이 1.0 일 경우
       if (mlTypeValue == 1) {
         if ((trainValue == 0) && (validationValue > 0)) {
-          AddClassList(
+          addClassList(
             [$trainInput, $validationInput, $testInput],
             "is-invalid");
-          AddErrorMessage($thisSelector);
+          addErrorMessage($thisSelector);
           return false;
         }
       }
 
       // 유효성 체크 통과.
-      RemoveClassList(
+      removeClassList(
         [$trainInput, $validationInput, $testInput],
         "is-invalid");
-      RemoveErrorMessage($thisSelector);
+      removeErrorMessage($thisSelector);
     }
     return true;
 
