@@ -22,18 +22,18 @@ services:
         cd ${PYTHONPATH}/celery
         ./run-celery.sh
 
-  flask_develop:
-    container_name: flask_develop
+  fastapi_develop:
+    container_name: fastapi_develop
     extends:
       file: common-compose.yml
-      service: flask
+      service: fastapi
     env_file:
       - .env
     build:
       context: .
-      dockerfile: ./flask/dockerfile
+      dockerfile: ./fastapi/dockerfile
     ports:
-      - '5500:5500'
+      - '8000:8000'
       - '2222:22'
     command:
       - /bin/bash
@@ -41,4 +41,4 @@ services:
       - |
         /usr/sbin/sshd
         cd ${PYTHONPATH}/web
-        ./run-flask.sh
+        ./run-fastapi.sh

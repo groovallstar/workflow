@@ -10,8 +10,7 @@ es.onerror = (event) => {
   es.close();
 }
 
-es.addEventListener("flask-event", (event) => {
-  //console.log("event map length:", singleton.map.size);
+es.addEventListener("fastapi-event", (event) => {
   if ((event === null) || (event === "")) {
     return;
   }
@@ -31,20 +30,23 @@ es.addEventListener("flask-event", (event) => {
 }, false);
 
 $(document).ready(() => {
-
   // 첫 페이지 설정.
-  InitializePage(PageName.TrainPredict);
+  initializePage(PageName.TrainPredict);
 
   $("#nav-ml").on("click", function () {
-    InitializePage(PageName.TrainPredict);
+    initializePage(PageName.TrainPredict);
   });
 
   $("#nav-insert-data").on("click", function () {
-    InitializePage(PageName.InsertData);
+    initializePage(PageName.InsertData);
+  });
+
+  $("#nav-insert-table").on("click", function () {
+    initializePage(PageName.InsertTable);
   });
 
   $("#nav-train-predict").on("click", function () {
-    InitializePage(PageName.TrainPredict);
+    initializePage(PageName.TrainPredict);
   });
 });
 
@@ -58,8 +60,7 @@ window.onbeforeunload = function (event) {
   }
 };
 
-function BtnAddClick(clickedPageName) {
-
+function btnAddClick(clickedPageName) {
   if (!singleton.id) {
     return false;
   }
@@ -72,8 +73,8 @@ function BtnAddClick(clickedPageName) {
   }
 
   // 유효성 체크 실패한 항목이 있으면 해당 항목의 첫번째 항목에 포커싱.
-  let jqueryPageId = StringFormat("[id='%%']", clickedPageName);
-  let invalidPageId = StringFormat("%% .is-invalid", jqueryPageId);
+  let jqueryPageId = stringFormat("[id='%%']", clickedPageName);
+  let invalidPageId = stringFormat("%% .is-invalid", jqueryPageId);
   if ($(invalidPageId).length > 0) {
     $(invalidPageId).eq(0).focus();
     return false;
@@ -85,9 +86,9 @@ function BtnAddClick(clickedPageName) {
     case PageName.InsertData:
     case PageName.InsertTable:
       // 2개 페이지는 모든 값이 존재하는지 체크.
-      let findElements = StringFormat("%% select, %% input",
-        jqueryPageId, jqueryPageId);
-      if (!CheckElementEmptyValue($(findElements))) {
+      let findElements = stringFormat(
+        "%% select, %% input", jqueryPageId, jqueryPageId);
+      if (!checkElementEmptyValue($(findElements))) {
         return false;
       }
       break;
@@ -102,19 +103,19 @@ function BtnAddClick(clickedPageName) {
       }
 
       // 활성화된 select에 값이 있는지 체크.
-      if (!CheckElementEmptyValue($("select[name=select-dbinfo]"))) {
+      if (!checkElementEmptyValue($("select[name=select-dbinfo]"))) {
         return false;
       }
 
       // 데이터 분리 input 유효성 체크.
-      if (SplitValidation(null, singleton.id) == false) {
+      if (splitValidation(null, singleton.id) == false) {
         return false;
       }
 
       // save model 유효성 체크
       let $saveModelCheckBox = $("#" + singleton.id["save_model_checkbox"]);
       if ($saveModelCheckBox.is(":checked") == true) {
-        if (!CheckElementEmptyValue(
+        if (!checkElementEmptyValue(
           $("[id*='t-save-model'][type!='checkbox']"))) {
           return false;
         }
@@ -129,16 +130,9 @@ function BtnAddClick(clickedPageName) {
   }
 
   let parameters = {};
-  let $jqueryPageId = $(jqueryPageId);
-  RecursiveIterate(singleton.id, parameters, $jqueryPageId, null,
-    (iterObj, targetObj, $rootJqueryObject, key, prefix) => {
+  recursiveIterate(singleton.id, parameters, null,
+    (iterObj, targetObj, key, prefix) => {
       let $selector = $("#" + iterObj[key]);
-      // 한 page 에 두 card의 설정 값이 있을 경우 
-      // 각자 card의 설정 값만 순회하기 위해 체크.
-      if (($rootJqueryObject) &&
-        (!$rootJqueryObject.find($selector).length)) {
-        return;
-      }
 
       let type = $selector.attr("type");
       let value = null;
@@ -168,7 +162,6 @@ function BtnAddClick(clickedPageName) {
       }
     }
   );
-
   //console.log(parameters);
   //console.log("map length (insert before):", singleton.map.size);
 
@@ -202,7 +195,6 @@ function BtnAddClick(clickedPageName) {
 
   let contentString = "";
   for (const [key, value] of Object.entries(parameters)) {
-
     let convertValue = "";
     if (typeof (value) === "boolean") {
       convertValue = value === true ? "true" : "false";
@@ -211,7 +203,7 @@ function BtnAddClick(clickedPageName) {
     } else {
       convertValue = value != "" ? value : "null";
     }
-    contentString += StringFormat("%% : %% <br/>", key, convertValue);
+    contentString += stringFormat("%% : %% <br/>", key, convertValue);
   }
 
   let $tabContents = $("<div></div>")
@@ -245,8 +237,7 @@ function BtnAddClick(clickedPageName) {
   return true;
 }
 
-function BtnExecuteClick() {
-
+function btnExecuteClick() {
   let $taskList = $("footer a");
   if ($taskList.length == 0) {
     return true;
@@ -289,12 +280,11 @@ function BtnExecuteClick() {
   // footer task list close 버튼 비활성 처리.
   $("footer div.card-body button.btn-close").attr("disabled", true);
 
-  CallSyncAjaxList("task", "POST", sendDataArray,
+  callSyncAjaxList("task", "POST", "application/json", sendDataArray,
     (json, data) => {
       // 개별 성공 callback.
       //console.log("success: ", json, data);
-    },
-    (json) => {
+    }, (json) => {
       // 실패할 경우 task list 정리.
       let $taskList = $("footer a");
       if ($taskList) {
@@ -319,7 +309,6 @@ function BtnExecuteClick() {
 }
 
 $("footer").on("click", "button[name='btn-task-close']", function (event) {
-
   let btnTaskId = $(this).parent().attr("task-id");
   singleton.map.delete(btnTaskId);
   //console.log("delete: ", btnTaskId, " ", singleton.map.size);
@@ -334,7 +323,6 @@ $("footer").on("click", "button[name='btn-task-close']", function (event) {
 });
 
 $(window).resize(function () {
-
   // width 가 991 이하로 줄어들면 navbar가 아이콘으로 바뀌면서 
   // 메뉴가 아래로 확장됨
   if ($(window).width() <= 991) {
@@ -346,15 +334,15 @@ $(window).resize(function () {
         $("#btn-show-task-list").removeClass("pt-nav-collapse-hide");
         $("#btn-show-task-list").addClass("pt-nav-collapse-show");
 
-        RemoveClassList([$("#main-row"), $("footer")], "mg-bt-64");
-        RemoveClassList([$("#main-row"), $("footer")], "mg-bt-192");
+        removeClassList([$("#main-row"), $("footer")], "mg-bt-64");
+        removeClassList([$("#main-row"), $("footer")], "mg-bt-192");
 
         if ($("footer").hasClass("d-none")) {
           // footer 가 숨어있을 경우 main-row 를 위로 당김
-          AddClass($("#main-row"), "mg-bt-192");
+          addClass($("#main-row"), "mg-bt-192");
         } else {
           // footer 가 있을 경우 위로 당김
-          AddClass($("footer"), "mg-bt-192");
+          addClass($("footer"), "mg-bt-192");
         }
       }
     }
@@ -365,58 +353,55 @@ $(window).resize(function () {
       $("#btn-show-task-list").removeClass("pt-nav-collapse-show");
       $("#btn-show-task-list").addClass("pt-nav-collapse-hide");
 
-      RemoveClassList([$("#main-row"), $("footer")], "mg-bt-64");
-      RemoveClassList([$("#main-row"), $("footer")], "mg-bt-192");
+      removeClassList([$("#main-row"), $("footer")], "mg-bt-64");
+      removeClassList([$("#main-row"), $("footer")], "mg-bt-192");
 
       if ($("footer").hasClass("d-none")) {
         // footer 가 숨어있을 경우 main-row 를 위로 당김
-        AddClass($("#main-row"), "mg-bt-64");
+        addClass($("#main-row"), "mg-bt-64");
       } else {
         // footer 가 있을 경우 위로 당김
-        AddClass($("footer"), "mg-bt-64");
+        addClass($("footer"), "mg-bt-64");
       }
     }
   }
 });
 
 $('.collapse').on('show.bs.collapse', function () {
+  removeClass($("#btn-show-task-list"), "pt-nav-collapse-hide");
+  addClass($("#btn-show-task-list"), "pt-nav-collapse-show");
 
-  RemoveClass($("#btn-show-task-list"), "pt-nav-collapse-hide");
-  AddClass($("#btn-show-task-list"), "pt-nav-collapse-show");
-
-  RemoveClassList([$("#main-row"), $("footer")], "mg-bt-64");
-  RemoveClassList([$("#main-row"), $("footer")], "mg-bt-192");
+  removeClassList([$("#main-row"), $("footer")], "mg-bt-64");
+  removeClassList([$("#main-row"), $("footer")], "mg-bt-192");
 
   if ($("footer").hasClass("d-none")) {
     // footer 가 숨어있을 경우 main-row 를 위로 당김
-    AddClass($("#main-row"), "mg-bt-192");
+    addClass($("#main-row"), "mg-bt-192");
   } else {
     // footer 가 있을 경우 위로 당김
-    AddClass($("footer"), "mg-bt-192");
+    addClass($("footer"), "mg-bt-192");
   }
 });
 
 $('.collapse').on('hide.bs.collapse', function () {
+  removeClass($("#btn-show-task-list"), "pt-nav-collapse-show");
+  addClass($("#btn-show-task-list"), "pt-nav-collapse-hide");
 
-  RemoveClass($("#btn-show-task-list"), "pt-nav-collapse-show");
-  AddClass($("#btn-show-task-list"), "pt-nav-collapse-hide");
-
-  RemoveClassList([$("#main-row"), $("footer")], "mg-bt-64");
-  RemoveClassList([$("#main-row"), $("footer")], "mg-bt-192");
+  removeClassList([$("#main-row"), $("footer")], "mg-bt-64");
+  removeClassList([$("#main-row"), $("footer")], "mg-bt-192");
 
   if ($("footer").hasClass("d-none")) {
     // footer 가 숨어있을 경우 main-row 를 위로 당김
-    AddClass($("#main-row"), "mg-bt-64");
+    addClass($("#main-row"), "mg-bt-64");
   } else {
     // footer 가 있을 경우 위로 당김
-    AddClass($("footer"), "mg-bt-64");
+    addClass($("footer"), "mg-bt-64");
   }
 });
 
-function ToggleTaskListButton() {
-
-  RemoveClassList([$("#main-row"), $("footer")], "mg-bt-64");
-  RemoveClassList([$("#main-row"), $("footer")], "mg-bt-192");
+function toggleTaskListButton() {
+  removeClassList([$("#main-row"), $("footer")], "mg-bt-64");
+  removeClassList([$("#main-row"), $("footer")], "mg-bt-192");
 
   // footer 가 hide 되어 있을 경우
   if ($("footer").hasClass("d-none") == true) {

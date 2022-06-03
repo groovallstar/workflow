@@ -1,10 +1,10 @@
 
 import enum
-class PageName(enum.auto):
+class PageName(str, enum.Enum):
     """Define Page Names"""
-    INSERT_DATA = 'INSERT DATA'
-    INSERT_TABLE = 'INSERT TABLE'
-    TRAIN_PREDICT = 'TRAIN PREDICT'
+    INSERT_DATA = 'INSERT_DATA'
+    INSERT_TABLE = 'INSERT_TABLE'
+    TRAIN_PREDICT = 'TRAIN_PREDICT'
 
 class Input:
     """HTML Input Element"""

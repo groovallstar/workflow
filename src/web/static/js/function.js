@@ -4,13 +4,13 @@
  * 각 페이지 이름 Define.
  */
 let PageName = Object.freeze({
-  "InsertData": "INSERT DATA",
-  "InsertTable": "INSERT TABLE",
-  "TrainPredict": "TRAIN PREDICT",
+  "InsertData": "INSERT_DATA",
+  "InsertTable": "INSERT_TABLE",
+  "TrainPredict": "TRAIN_PREDICT",
 });
 
 /**
- * 학습/예측 페이지에서 타입 선택 값.
+ * 학습/예측 페이지에서 머신러닝 할 타입 선택 값.
  */
 let SelectedMlType = Object.freeze({
   "TRAIN": 1,
@@ -60,7 +60,7 @@ Date.prototype.yyyymm = function () {
 /**
  * "%%" 을 대입 문자열로 치환.
  */
-function StringFormat(fmt, ...args) {
+function stringFormat(fmt, ...args) {
   return fmt
     .split("%%")
     .reduce((aggregate, chunk, i) => aggregate + chunk + (args[i] || ""), "");
@@ -84,21 +84,20 @@ const appendValue = (total, value) => {
  *
  * @param url 호출 URI.
  * @param type Method 타입.
+ * @param contentType Content-Type.
  * @param sendData Web Server로 전달할 데이터.
  * @param successFunc ajax 성공 시 콜백 함수.
  * @param failFunc ajax 실패 시 콜백 함수.
  * @param alwaysFunc ajax 호출 시 항상 호출 되는 콜백 함수.
  */
-const CallAjax = (url, type, sendData,
+const callAjax = (url, type, contentType, sendData,
   successFunc = null,
   failFunc = null,
   alwaysFunc = null) => {
-
   $.ajax({
     url: url,
     type: type,
-    dataType: "json",
-    contentType: "application/json",
+    contentType: contentType,
     data: sendData,
 
   }).done((json) => {
@@ -129,17 +128,12 @@ const CallAjax = (url, type, sendData,
  * 
  * @param sendData Web Server로 전달할 데이터.
  */
-const ContentsAjax = (sendData) => {
+const contentsAjax = (sendData) => {
   return new Promise((resolve, reject) => {
-    CallAjax("contents", "GET", sendData,
+    callAjax("contents", "GET", "text/html", sendData,
       (json) => {
-        if (!json.hasOwnProperty("html")) {
-          console.error("response data not in html data.");
-          reject("response data not in html data.");
-        }
-        resolve(json["html"]);
-      },
-      (xhr, ajaxOptions, thrownError) => {
+        resolve(json);
+      }, (xhr, ajaxOptions, thrownError) => {
         reject(xhr, ajaxOptions, thrownError);
       });
   });
@@ -152,39 +146,36 @@ const ContentsAjax = (sendData) => {
  * 
  * @param sendData Web Server로 전달할 데이터.
  */
-const AttributesAjax = (sendData) => {
+const attributesAjax = (sendData) => {
   return new Promise((resolve, reject) => {
-    CallAjax("attributes", "GET", sendData,
+    callAjax("attributes", "GET", "application/json", sendData,
       (json) => {
         if (!json.hasOwnProperty("id")) {
           console.error("response data not in id data.");
           reject("response data not in id data.");
         }
         resolve(json);
-      },
-      (xhr, ajaxOptions, thrownError) => {
+      }, (xhr, ajaxOptions, thrownError) => {
         reject(xhr, ajaxOptions, thrownError);
       });
   });
 };
 
 /**
- * /lists ajax 호출.
+ * /sel_list_db ajax 호출.
  * 
  * Database List 받기.
  * 
  */
-const GetDatabaseListAjax = () => {
+const getDatabaseListAjax = () => {
   return new Promise((resolve, reject) => {
-    CallAjax("lists", "GET", null,
+    callAjax("sel_list_db", "GET", "application/json", null,
       (json) => {
         if (!json) {
-          console.error("response data empty.");
-          reject("response data empty.");
+          console.log("sel_list_db response data empty.");
         }
         resolve(json);
-      },
-      (xhr, ajaxOptions, thrownError) => {
+      }, (xhr, ajaxOptions, thrownError) => {
         reject(xhr, ajaxOptions, thrownError);
       });
   });
@@ -197,17 +188,16 @@ const GetDatabaseListAjax = () => {
  * 
  * @param sendData Web Server로 전달할 데이터.
  */
-const SettingsAjax = (sendData) => {
+const settingsAjax = (sendData) => {
   return new Promise((resolve, reject) => {
-    CallAjax("settings", "GET", sendData,
+    callAjax("settings", "GET", "application/json", sendData,
       (json) => {
         if (!json) {
-          console.error("response data empty.");
+          console.error("/settings Response Data Empty.");
           resolve(); // 마지막 설정 값이 없어도 reject가 아님.
         }
         resolve(json);
-      },
-      (xhr, ajaxOptions, thrownError) => {
+      }, (xhr, ajaxOptions, thrownError) => {
         reject(xhr, ajaxOptions, thrownError);
       });
   });
@@ -224,22 +214,20 @@ const SettingsAjax = (sendData) => {
  * @param completeFunc 모든 ajax가 완료됐을 때 콜백 함수.
  * @param exceptFunc 한 ajax라도 예외 발생했을 때의 콜백 함수.
  */
-function CallSyncAjaxList(url, type, sendDataArray,
+function callSyncAjaxList(url, type, contentType, sendDataArray,
   elementSuccessFunc = null, elementFailFunc = null,
   completeFunc = null, exceptFunc = null) {
   // sendDataArray의 개별 data를 꺼내어 순차적으로 ajax 호출.
   let ajaxRequest = function (sendData) {
     let deferred = $.Deferred();
-    CallAjax(url, type, sendData,
+    callAjax(url, type, contentType, sendData,
       (json) => {
         // 단일 ajax 성공.
         deferred.resolve(json);
-
         if (elementSuccessFunc) {
           elementSuccessFunc(json);
         }
-      },
-      (json) => {
+      }, (json) => {
         // 단일 ajax 실패.
         deferred.reject(json);
         if (elementFailFunc) {
@@ -259,19 +247,19 @@ function CallSyncAjaxList(url, type, sendDataArray,
     });
     return deferredResolve;
   }))
-    .then(function () {
-      // array의 모든 ajax 완료 후 호출.
-      if (completeFunc) {
-        completeFunc();
-      }
-    })
-    .catch(function (error) {
-      if (exceptFunc) {
-        exceptFunc(error);
-      } else {
-        console.log("Exception:", error);
-      }
-    });
+  .then(function () {
+    // array의 모든 ajax 완료 후 호출.
+    if (completeFunc) {
+      completeFunc();
+    }
+  })
+  .catch(function (error) {
+    if (exceptFunc) {
+      exceptFunc(error);
+    } else {
+      console.log("Exception:", error);
+    }
+  });
 }
 
 /**
@@ -279,19 +267,17 @@ function CallSyncAjaxList(url, type, sendDataArray,
  *
  * @param iterableObject 순회 할 Object.
  * @param targetObject Object 순회한 key 이름을 통해 콜백 함수 내에서 따로 접근할 Object.
- * @param rootJqueryObject 해당 JQuery Object 하위에 대상 Object 가 존재 하는지 체크.
  * @param prefix 중첩 Object 일 경우 하위 Object의 key 이름.
  * @param callback 호출할 콜백함수.
  */
-const RecursiveIterate = (iterableObject, targetObject, rootJqueryObject,
-  prefix, callback) => {
+const recursiveIterate = (
+  iterableObject, targetObject, prefix, callback) => {
   Object.keys(iterableObject).forEach(key => {
     if (typeof iterableObject[key] === "object") {
       //recursive.
-      RecursiveIterate(iterableObject[key], targetObject, rootJqueryObject,
-        key, callback);
+      recursiveIterate(iterableObject[key], targetObject, key, callback);
     } else {
-      callback(iterableObject, targetObject, rootJqueryObject, key, prefix);
+      callback(iterableObject, targetObject, key, prefix);
     }
   })
 };
@@ -305,7 +291,7 @@ const RecursiveIterate = (iterableObject, targetObject, rootJqueryObject,
  * 
  * @param event 키 입력 event.
  */
-function NumberInputKeyPressCheck(event) {
+function numberInputKeyPressCheck(event) {
   if (event.which < 48 || event.which > 57) {
     if ((event.which != 46)) {
       // Allow '.', number.
@@ -336,7 +322,7 @@ function NumberInputKeyPressCheck(event) {
  * 
  * @param $thisSelector $(this) Jquery 셀렉터.
  */
-const AddErrorMessage = $thisSelector => {
+const addErrorMessage = $thisSelector => {
   if (($thisSelector.length <= 0)) {
     return false;
   }
@@ -363,7 +349,7 @@ const AddErrorMessage = $thisSelector => {
  * 
  * @param $thisSelector $(this) Jquery 셀렉터.
  */
-const RemoveErrorMessage = $thisSelector => {
+const removeErrorMessage = $thisSelector => {
   let $column = $thisSelector.parent().parent().parent().children(); // col
   // column의 마지막 element의 error-message attribute 제거
   if ($column.length > 0) {
@@ -379,7 +365,7 @@ const RemoveErrorMessage = $thisSelector => {
  * @param selectorList 적용할 Jquery 셀렉터 리스트.
  * @param className 추가할 HTML class.
  */
-const AddClassList = (selectorList, className) => {
+const addClassList = (selectorList, className) => {
   if ((!selectorList) || (!className)) {
     return false;
   }
@@ -390,9 +376,8 @@ const AddClassList = (selectorList, className) => {
 
   try {
     selectorList.forEach(function (item) {
-      AddClass(item, className);
+      addClass(item, className);
     });
-
   } catch (error) {
     console.error(error);
     return false;
@@ -407,7 +392,7 @@ const AddClassList = (selectorList, className) => {
  * @param selector 적용할 Jquery 셀렉터.
  * @param className 추가할 HTML class.
  */
-const AddClass = (selector, className) => {
+const addClass = (selector, className) => {
   if (!selector) {
     return false;
   }
@@ -427,7 +412,7 @@ const AddClass = (selector, className) => {
  * @param selectorList 적용할 Jquery 셀렉터 리스트.
  * @param className 제거할 HTML class.
  */
-const RemoveClassList = (selectorList, className) => {
+const removeClassList = (selectorList, className) => {
   if ((!selectorList) || (!className)) {
     return false;
   }
@@ -438,9 +423,8 @@ const RemoveClassList = (selectorList, className) => {
 
   try {
     selectorList.forEach(function (item) {
-      RemoveClass(item, className);
+      removeClass(item, className);
     });
-
   } catch (error) {
     console.error(error);
     return false;
@@ -455,7 +439,7 @@ const RemoveClassList = (selectorList, className) => {
  * @param selector 적용할 Jquery 셀렉터.
  * @param className 제거할 HTML class.
  */
-const RemoveClass = (selector, className) => {
+const removeClass = (selector, className) => {
   if (!selector) {
     return false;
   }
@@ -474,7 +458,7 @@ const RemoveClass = (selector, className) => {
  * 
  * @param selectorList 적용할 Select Jquery 셀렉터.
  */
-const InitSelectList = (selectorList) => {
+const initSelectList = (selectorList) => {
   if (!selectorList) {
     return false;
   }
@@ -501,7 +485,7 @@ const InitSelectList = (selectorList) => {
  * @param $disableElement 활성/비활성 할 HTML element 셀렉터.
  * @param defaultValue 비활성 -> 활성화 될 때 기본값.
  */
-const ToggleDisableElement = (
+const toggleDisableElement = (
   $checkBox, $disableElement, defaultValue = "") => {
 
   if ($checkBox.length <= 0) {
@@ -521,8 +505,8 @@ const ToggleDisableElement = (
     } else {
       $(item).prop("disabled", true);
       $(item).val("");
-      RemoveClass($(item), "is-invalid");
-      RemoveErrorMessage($(item));
+      removeClass($(item), "is-invalid");
+      removeErrorMessage($(item));
     }
   });
 };
@@ -533,7 +517,7 @@ const ToggleDisableElement = (
  * @param $selector 체크할 element Jquery 셀렉터.
  * @param isFocusing 값이 없을때 해당 element에 커서 이동 여부.
  */
-function CheckElementEmptyValue($selector, isFocusing = true) {
+function checkElementEmptyValue($selector, isFocusing = true) {
 
   if (!$selector) {
     return false;
@@ -570,7 +554,7 @@ function CheckElementEmptyValue($selector, isFocusing = true) {
  * @param $selector 체크할 element Jquery 셀렉터.
  * @param compareValue list에 값이 있는지 비교 값.
  */
-function AlreadyExistSelectValue($selector, compareValue) {
+function alreadyExistSelectValue($selector, compareValue) {
 
   if (!$selector || !compareValue) {
     return false;

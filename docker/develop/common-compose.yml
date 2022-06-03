@@ -10,8 +10,8 @@ services:
       - /tmp:/tmp
       - ${MLFLOW_RUNS_PATH}:/mlruns
 
-  flask:
-    image: flask:release
+  fastapi:
+    image: fastapi:release
     env_file:
       - .env
     volumes:

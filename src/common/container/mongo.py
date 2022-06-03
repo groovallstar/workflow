@@ -51,10 +51,21 @@ class MongoDB:
         if self._connection:
             self._connection.close()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return self.close()
+
     @property
     def database(self):
         """Get database object"""
         return self._database
+
+    def get_database_list(self) -> list:
+        """Get Database List."""
+        if self._connection:
+            return self._connection.list_database_names()
 
     def get_collection_list(self) -> list:
         """Get collection List.
@@ -65,16 +76,11 @@ class MongoDB:
         Returns:
             list: collection name list.
         """
-        if self._connection is None:
+        if not self._connection:
             raise Exception('Database connection is not initialized.')
 
         if self._database is not None:
             return self._database.list_collection_names()
-
-    def get_database_list(self) -> list:
-        """Get Database List."""
-        if self._connection:
-            return self._connection.list_database_names()
 
 class Collection(MongoDB):
     """Collection Class
@@ -176,9 +182,8 @@ class Collection(MongoDB):
         return self._collection.find_one_and_replace(
             filter_query, query, upsert=upsert)
 
-    @classmethod
-    def convert_string_to_datetime(
-        cls, date_time_string: str) -> Union[datetime, None]:
+    @staticmethod
+    def convert_datetime(date_time_string: str) -> Union[datetime, None]:
         """문자열을 날짜값으로 변환.
 
         Args:
@@ -230,7 +235,7 @@ class Collection(MongoDB):
                                  get_code_line(inspect.currentframe()))
             return result[0]['date']
         else:
-            return Collection.convert_string_to_datetime(
+            return Collection.convert_datetime(
                 date_time_string=start_date_string)
 
     @verify_collection_object
@@ -263,12 +268,12 @@ class Collection(MongoDB):
                                  get_code_line(inspect.currentframe()))
             return result[0]['date']
         else:
-            return Collection.convert_string_to_datetime(
+            return Collection.convert_datetime(
                 date_time_string=end_date_string)
 
-    @classmethod
+    @staticmethod
     def make_date_query_from_data_collection(
-        cls, start_date: str = None, end_date: str = None,
+        start_date: str = None, end_date: str = None,
         ignore_convert_error = True) -> dict:
         """데이터 컬렉션의 날짜 데이터를 쿼리하기 위한 조건문 생성.
 
@@ -286,15 +291,13 @@ class Collection(MongoDB):
             return query
 
         if start_date:
-            start = cls.convert_string_to_datetime(
-                date_time_string=start_date)
+            start = Collection.convert_datetime(date_time_string=start_date)
             if (ignore_convert_error is False) and (start is None):
                 return query
             if start:
                 query['$gte'] = start
         if end_date:
-            end = cls.convert_string_to_datetime(
-                date_time_string=end_date)
+            end = Collection.convert_datetime(date_time_string=end_date)
             if (ignore_convert_error is False) and (end is None):
                 return query
             if end:
@@ -302,35 +305,57 @@ class Collection(MongoDB):
         return query
 
     @verify_collection_object
-    def get_datetime_list_from_data_collection(
+    def get_datetime_list_from_collection(
             self, start_date: str = None, end_date: str = None) -> list:
         """데이터 컬렉션으로부터 날짜 데이터의 개수를 쿼리함.
-           (시작날짜 <= 날짜값 <= 종료날짜)
+           data Collection 일 경우: 시작날짜 <= 날짜 쿼리 <= 종료날짜
+           data 외 Collection 일 경우: 시작날짜 이후의 종료 날짜 쿼리,
+                                       종료날짜 이전의 시작 날짜 쿼리
 
         Args:
             start_date (str, optional): YYYYMM 형식의 문자열
             end_date (str, optional): YYYYMM 형식의 문자열
 
         Returns:
-            list: 쿼리 결과
+            list: 날짜 list
         """
-        query = Collection.make_date_query_from_data_collection(
-            start_date=start_date, end_date=end_date,
-            ignore_convert_error=False)
+        result = []
 
-        # 날짜값이 잘못될 경우는 날짜의 전체 값을 쿼리하지 않고 None을 리턴함.
-        if not query:
-            return None
+        # 시작, 종료 날짜가 둘다 있거나 둘다 없을 경우는 예외발생
+        if (((start_date) and (end_date)) or
+            ((not start_date) and (not end_date))):
+            raise ValueError('Invalid Parameters.')
 
-        return self._collection.find(
-            {'date': query},
-            {'date': True}).distinct('date')
+        # date 컬럼은 data database에만 존재함
+        if self.exists(key_name='date'):
+            query = Collection.make_date_query_from_data_collection(
+                start_date=start_date,
+                end_date=end_date,
+                ignore_convert_error=False)
+            if query:
+                result = self._collection.find(
+                   {'date': query},
+                   {'date': True}).distinct('date')
+        else:
+            start_date_string = Collection.convert_datetime(
+                date_time_string=start_date)
+            end_date_string = Collection.convert_datetime(
+                date_time_string=end_date)
+            if start_date_string:
+                result = self.object.distinct(
+                    'end_date', {'start_date': start_date_string})
+            elif end_date_string:
+                result = self.object.distinct(
+                    'start_date', {'end_date': end_date_string})
+
+        return result
 
     @verify_collection_object
     def get_data_count_from_datetime(
             self, start_date: str = None, end_date: str = None) -> int:
-        """데이터 컬렉션으로부터 해당 날짜의 데이터의 개수를 쿼리함.
-           (시작날짜 <= 데이터 <= 종료날짜)
+        """컬렉션으로부터 해당 날짜의 데이터의 개수를 쿼리함.
+           data Collection 일 경우 : (시작날짜 <= 데이터 <= 종료날짜)
+           data 외 Collection 일 경우 : 쿼리에 시작, 종료날짜 포함
 
         Args:
             start_date (str, optional): YYYYMM 형식의 문자열
@@ -339,15 +364,28 @@ class Collection(MongoDB):
         Returns:
             int: 쿼리 결과 개수
         """
-        query = Collection.make_date_query_from_data_collection(
-            start_date=start_date, end_date=end_date,
-            ignore_convert_error=False)
+        query = {}
 
-        # 시작, 종료 날짜가 None이면 전체 데이터 쿼리
+        # date 컬럼은 data database에만 존재함
+        if self.exists(key_name='date'):
+            result = Collection.make_date_query_from_data_collection(
+                start_date=start_date, end_date=end_date,
+                ignore_convert_error=False)
+            if result:
+                query['date'] = result
+        else:
+            if start_date:
+                query['start_date'] = Collection.convert_datetime(
+                    date_time_string=start_date)
+            if end_date:
+                query['end_date'] = Collection.convert_datetime(
+                    date_time_string=end_date)
+
+        # 시작, 종료 날짜가 None이면 0 리턴
         if not query:
-            return None
+            return 0
 
-        return self._collection.count_documents({'date': query})
+        return self._collection.count_documents(query)
 
     @classmethod
     def get_data_list_from_data_dict(cls, data: dict) -> list:
@@ -415,13 +453,11 @@ class Collection(MongoDB):
         collection = cls(table['database'], table['collection'])
         query = {}
         if start_date:
-            start = cls.convert_string_to_datetime(
-                date_time_string=start_date)
+            start = cls.convert_datetime(date_time_string=start_date)
             if start:
                 query['start_date'] = start
         if end_date:
-            end = cls.convert_string_to_datetime(
-                date_time_string=end_date)
+            end = cls.convert_datetime(date_time_string=end_date)
             if end:
                 query['end_date'] = end
 
@@ -444,8 +480,7 @@ class Collection(MongoDB):
         """컬럼 정보 쿼리.
 
         Args:
-            table (dict): 'database', 'collection',
-                               'start_date', 'end_date'
+            table (dict): 'database', 'collection', 'start_date', 'end_date'
 
         Raises:
             ValueError: 쿼리 결과에 columns 키가 없을 경우
@@ -469,8 +504,7 @@ class Collection(MongoDB):
         """table collection에서 쿼리 결과의 id를 리턴.
 
         Args:
-            table (dict): 'database', 'collection',
-                               'start_date', 'end_date'
+            table (dict): 'database', 'collection', 'start_date', 'end_date'
 
         Raises:
             ValueError: 파라미터가 잘못된 경우
