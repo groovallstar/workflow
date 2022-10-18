@@ -1,6 +1,7 @@
 FROM silverlogic/python3.8
 
 SHELL ["/bin/bash", "-c"]
+RUN echo "alias ll='ls $LS_OPTIONS -l'" >> ~/.bashrc && source ~/.bashrc
 
 RUN apt-get clean
 RUN apt-get update && \
@@ -23,10 +24,10 @@ RUN source .env && \
     echo "export CELERY_BROKER_URL=${CELERY_BROKER_URL}" >> ~/.profile && \
     echo "export CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}" >> ~/.profile && \
     echo "export C_FORCE_ROOT=${C_FORCE_ROOT}" >> ~/.profile && \
-    echo "export FASTAPI_PORT=$FASTAPI_PORT" >> ~/.profile \
-    echo "export REDIS_SUBSCRIBE_CHANNEL=$REDIS_SUBSCRIBE_CHANNEL" >> ~/.profile \
-    echo "export LC_ALL=$LC_ALL" >> ~/.profile && \
-    echo "export LANG=$LANG" >> ~/.profile
+    echo "export FASTAPI_PORT=${FASTAPI_PORT}" >> ~/.profile \
+    echo "export REDIS_SUBSCRIBE_CHANNEL=${REDIS_SUBSCRIBE_CHANNEL}" >> ~/.profile \
+    echo "export LC_ALL=${LC_ALL}" >> ~/.profile && \
+    echo "export LANG=${LANG}" >> ~/.profile
 
 # pip install list
 COPY ./fastapi/requirements.txt .
