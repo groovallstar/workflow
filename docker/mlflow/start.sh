@@ -11,4 +11,4 @@
 # ALTER TABLE model_versions MODIFY COLUMN description VARCHAR(255) CHARACTER SET utf8 COLLATE utf8_general_ci;
 # -----------------------------------------------------------------------------
 
-docker-compose -f docker-compose.yml up -d
+docker compose -f docker-compose.yml up -d
