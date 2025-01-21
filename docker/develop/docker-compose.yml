@@ -1,16 +1,14 @@
-version: '3.3'
-
 services:
-  sklearn_develop:
+  client_test:
     extends:
       file: common-compose.yml
-      service: sklearn
-    container_name: sklearn_develop
+      service: client
+    container_name: client_test
     env_file:
       - .env
     build:
       context: .
-      dockerfile: ./sklearn/dockerfile
+      dockerfile: ./client/dockerfile
     shm_size: '20gb' # using ray shared memory option.
     ports:
       - '2221:22'
@@ -18,27 +16,27 @@ services:
       - /bin/bash
       - -c
       - |
-        /usr/sbin/sshd
+        /usr/sbin/sshd -D
         cd ${PYTHONPATH}/celery
         ./run-celery.sh
 
-  fastapi_develop:
-    container_name: fastapi_develop
+  fastapi_test:
+    container_name: server_test
     extends:
       file: common-compose.yml
-      service: fastapi
+      service: server
     env_file:
       - .env
     build:
       context: .
-      dockerfile: ./fastapi/dockerfile
+      dockerfile: ./server/dockerfile
     ports:
-      - '8000:8000'
+      - '8008:8008'
       - '2222:22'
     command:
       - /bin/bash
       - -c
       - |
-        /usr/sbin/sshd
+        /usr/sbin/sshd -D
         cd ${PYTHONPATH}/web
         ./run-fastapi.sh

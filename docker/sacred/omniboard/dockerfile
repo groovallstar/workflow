@@ -1,7 +1,0 @@
-# ref. https://github.com/vivekratnavel/omniboard/blob/master/docs/quick-start.md
-
-FROM vivekratnavel/omniboard:latest
-
-WORKDIR /usr/omniboard
-COPY config.json .
-ENV OMNIBOARD_CONFIG /usr/omniboard/config.json

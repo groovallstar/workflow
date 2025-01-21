@@ -1,15 +1,56 @@
-FROM pytorch/pytorch:latest
+# syntax=docker/dockerfile:1
+FROM pytorch/pytorch:2.3.0-cuda12.1-cudnn8-devel
+
+SHELL ["/bin/bash", "-c"]
+RUN echo "alias ll='ls $LS_OPTIONS -alh'" >> ~/.bashrc && source ~/.bashrc
+
+RUN <<EOF
+# apt-get package
+apt-get update
+apt-get install -y openssh-server liblzma-dev libbz2-dev git-lfs
 
 # timezone
-RUN export DEBIAN_FRONTEND=noninteractive
-RUN ln -fs /usr/share/zoneinfo/Asia/Seoul /etc/localtime
-RUN apt-get update && apt-get install -y tzdata
-RUN dpkg-reconfigure --frontend noninteractive tzdata
+export DEBIAN_FRONTEND=noninteractive
+ln -fs /usr/share/zoneinfo/Asia/Seoul /etc/localtime
+apt-get install -y tzdata
+dpkg-reconfigure --frontend noninteractive tzdata
 
-# pip install list
-RUN pip install pandas
-RUN pip install numpy
-RUN pip install seaborn
-RUN pip install jupyter
-RUN pip install onnx onnxruntime
-RUN pip install torchtext
+# env
+echo 'export LC_ALL=C.UTF-8' >> ~/.profile
+echo 'export LANG=C.UTF-8' >> ~/.profile
+echo 'export PYTHONPATH=/work/git/ml/src/' >> ~/.profile
+echo 'export PATH=/opt/conda/bin:$PATH' >> ~/.profile
+echo 'export HF_HOME=/work/.huggingface/' >> ~/.profile
+source ~/.profile
+EOF
+
+RUN <<EOF
+source /opt/conda/bin/activate base
+conda install scikit-learn
+conda install numpy
+conda install pandas
+conda install seaborn
+conda install matplotlib
+conda install nltk
+conda install jupyter notebook
+
+pip install transformers
+pip install datasets
+pip install accelerate
+pip install evaluate
+pip install sentencepiece
+pip install pytorch-model-summary
+pip install seqeval
+EOF
+
+# ssh 설정
+RUN <<EOF
+mkdir /root/.ssh
+# set password
+echo 'root:root'|chpasswd
+
+# replace sshd_config
+sed -ri 's/^#?PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
+service ssh start
+EOF

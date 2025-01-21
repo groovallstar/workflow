@@ -1,0 +1,53 @@
+# syntax=docker/dockerfile:1
+FROM python:3.11.6-bullseye
+
+SHELL ["/bin/bash", "-c"]
+RUN echo "alias ll='ls $LS_OPTIONS -alh'" >> ~/.bashrc && source ~/.bashrc
+
+RUN <<EOF
+apt-get update
+# apt-get package
+apt-get install -y openssh-server liblzma-dev libbz2-dev \
+                   git-lfs tzdata vim
+
+# timezone
+export DEBIAN_FRONTEND=noninteractive
+ln -fs /usr/share/zoneinfo/Asia/Seoul /etc/localtime
+dpkg-reconfigure --frontend noninteractive tzdata
+EOF
+
+# set environments.
+COPY .env .
+RUN <<EOF
+source .env
+echo "export PYTHONPATH=${PYTHONPATH}" >> ~/.profile
+echo "export MONGODB_URL=${MONGODB_URL}" >> ~/.profile
+echo "export REDIS_HOST_IP=${REDIS_HOST_IP}" >> ~/.profile
+echo "export CELERY_BROKER_URL=${CELERY_BROKER_URL}" >> ~/.profile
+echo "export CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}" >> ~/.profile
+echo "export C_FORCE_ROOT=${C_FORCE_ROOT}" >> ~/.profile
+echo "export FASTAPI_PORT=${FASTAPI_PORT}" >> ~/.profile
+echo "export REDIS_SUBSCRIBE_CHANNEL=${REDIS_SUBSCRIBE_CHANNEL}" >> ~/.profile
+echo "export LC_ALL=${LC_ALL}" >> ~/.profile
+echo "export LANG=${LANG}" >> ~/.profile
+source ~/.profile
+EOF
+
+# pip install list
+COPY ./server/requirements.txt .
+RUN <<EOF
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+EOF
+
+# ssh 설정
+RUN <<EOF
+mkdir /root/.ssh
+# set password
+echo 'root:root'|chpasswd
+
+# replace sshd_config
+sed -ri 's/^#?PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
+service ssh start
+EOF

@@ -1,17 +1,17 @@
 version: '3.3'
 
 services:
-  sklearn:
-    image: sklearn:release
+  client:
+    image: client:test
     env_file:
       - .env
     volumes:
-      - workflow:/workflow
+      - /workflow:/workflow
       - /tmp:/tmp
       - ${MLFLOW_RUNS_PATH}:/mlruns
 
-  fastapi:
-    image: fastapi:release
+  server:
+    image: server:test
     env_file:
       - .env
     volumes:
