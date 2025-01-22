@@ -27,7 +27,6 @@
         - --run_name=MLflow Run 이름
 
         - --show_data=학습/검증/테스트 데이터에 대한 비율 출력
-        - --sampling=로드한 데이터의 샘플링(0.5:데이터의 절반 추출)
         - --seed=데이터 분할 및 모델 학습에 사용할 Random Seed 값
         - --classification_file_name=dataset에서 사용할 모델 및 Hyper Parameter 정보 파일명
         

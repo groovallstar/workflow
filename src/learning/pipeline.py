@@ -3,40 +3,25 @@ import inspect
 from typing import Iterator, List, Tuple, Any, Union
 
 from common.data_type import MetricData, MetricScoreInfo, BestModelScoreInfo
-from common.function import _validate, get_code_line
+from common.function import get_code_line, TempDir
 from common.trace_log import TraceLog, init_log_object, get_log_file_name
 
 from learning.classifier import Classifier
 from learning.model import Model
 
-def _get_dicts(indict, prefix=None) -> Iterator[List[str]]:
-    """nested dictionary 구조에서 [key, subkey, ..., value] 값 리턴"""
-    prefix = prefix if prefix else []
-    if not indict:
-        return None
-    elif isinstance(indict, dict):
-        for key, value in indict.items():
-            if isinstance(value, dict):
-                for v in _get_dicts(value, prefix + [key]):
-                    yield v
-            else:
-                yield prefix + [key, value]
-    else:
-        yield prefix + [indict]
-
 # VSCODE launch.json parameter example.
 # "args" : [
 #   "--experiment=test", "--run_name=test",
 #   "--_data={\"database\" : \"test\", \"collection\" : \"iris.data\",
-#                  \"start_date\" : \"202201\", \"end\" : \"202201\"}",
+#                  \"start_date\" : \"202501\", \"end\" : \"202501\"}",
 #   "--table={\"database\":\"test\",\"collection\":\"table\",
-#             \"start_date\" : \"202201\",\"end\" : \"202201\"}",
+#             \"start_date\" : \"202501\",\"end\" : \"202501\"}",
 #   "--seed=123", "--show_data", "--classification_file_name=iris.yaml",
 #   "--show_metric_by_thresholds=0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9",
 #   "--train", "--evaluate", "--show_optimal_metric",
 #   "--load_model={\"database\" : \"test\", \"collection\" : \"model\",
-#                  \"start_date\" : \"202201\", \"end_date\" : \"202001\"}",
-#   "--find_best_model", "--grid_search", "--bayesian_optimizer",
+#                  \"start_date\" : \"202501\", \"end_date\" : \"202501\"}",
+#   "--find_best_model", "--bayesian_optimizer",
 #   "--save_model={\"database\" : \"test\", \"collection\" : \"model\"}",
 # ]
 
@@ -57,8 +42,8 @@ def parse_commandline() -> dict:
          "start_date": Gather Start Date(str)
          "end_date": Gather End Date(str)
     e.g. --data='{"database": "database", "collection": "collection",
-                  "start_date": "202201", "end_date": "202201"}'
-         => Query 202201 Data
+                  "start_date": "202501", "end_date": "202501"}'
+         => Query 202501 Data
 
     --split_ratio Example
     Format: Dictionary Format
@@ -87,7 +72,7 @@ def parse_commandline() -> dict:
          "start_date": Data Start Date Used For Training
          "end_date": Data End Date Used For Training
     e.g. --load_model={"database": "test","collection": "model",
-                       "start_date": "202201","end_date": "202201"}"
+                       "start_date": "202501","end_date": "202501"}"
 
     --save_model: Save Model Dictionary
     Format: Dictionary Format
@@ -96,7 +81,6 @@ def parse_commandline() -> dict:
     e.g. "--save_model={"database": "test","collection": "model"}",
     ===========================================================================
     """)
-
     parser = argparse.ArgumentParser(
         description=description,
         formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -243,12 +227,11 @@ class PipeLine:
         if self._use_mlflow:
             import mlflow
             with mlflow.start_run(
-                run_name=_validate(self._parameters, 'run_name'),
+                run_name=self._parameters.get('run_name', ''),
                 experiment_id=self._experiment.experiment_id):
-
-                mlflow.set_tag('mlflow.note.content',
-                                _validate(self._parameters, 'run_name'))
-
+                mlflow.set_tag(
+                    'mlflow.note.content',
+                    self._parameters.get('run_name', ''))
                 try:
                     self.run_experiment()
 
@@ -295,14 +278,14 @@ class PipeLine:
 
         # 데이터 분리.
         model = Model.prepare_data(
-            data=_validate(self._parameters, 'data'),
-            table=_validate(self._parameters, 'table'),
-            split_ratio=_validate(options, 'split_ratio'),
-            seed=_validate(self._parameters, 'seed'))
+            data=self._parameters.get('data', None),
+            table=self._parameters.get('table', None),
+            split_ratio=self._parameters.get('split_ratio', None),
+            seed=self._parameters.get('seed', None))
 
         # Classifier를 통한 모델 초기화 (명시적 호출 필요).
         model.init_model(
-            _validate(self._parameters, 'classification_file_name'))
+            self._parameters.get('classification_file_name', None))
 
         # 분리된 데이터 출력.
         if 'show_data' in self._parameters:
@@ -313,8 +296,8 @@ class PipeLine:
         if 'load_model' in self._parameters:
             TraceLog().info('- Start Load Model -')
             model.load_model(
-                model=_validate(self._parameters, 'load_model'),
-                table=_validate(self._parameters, 'table'))
+                model=self._parameters.get('load_model', None),
+                table=self._parameters.get('table', None))
 
         for name in self.mlflow_start_child_run(model.get_classifier_names()):
 
@@ -333,8 +316,8 @@ class PipeLine:
             # 평가 지표 출력.
             if 'show_metric_by_thresholds' in self._parameters:
                 TraceLog().info('- Show Metrics to Evaluation by Threshold -')
-                threshold_list = _validate(
-                    self._parameters, 'show_metric_by_thresholds')
+                threshold_list = self._parameters.get(
+                    'show_metric_by_thresholds', None)
                 for data in model.get_evaluate_metrics_by_name(
                     name=name, thresholds=threshold_list):
                     if data.verify():
@@ -379,9 +362,9 @@ class PipeLine:
         # (개별 모델의 루프가 종료된 후 다시 저장 해야 함)
         if 'save_model' in self._parameters:
             model.save_model_information_to_database(
-                model=_validate(self._parameters, 'save_model'),
-                data=_validate(self._parameters, 'data'),
-                table=_validate(self._parameters, 'table'),
+                model=self._parameters.get('save_model', None),
+                data=self._parameters.get('data', None),
+                table=self._parameters.get('table', None),
                 save_path_list=model.get_save_model_path_list())
 
         # 평가지표가 가장 높은 알고리즘을 찾아 임계값과 평가 지표를 출력.
@@ -441,7 +424,7 @@ class PipeLine:
             #         mlflow.log_artifact(trace_log_path)
 
         yaml_file = Classifier.get_classification_path_from_file_name(
-            _validate(self._parameters, 'classification_file_name'))
+            self._parameters.get('classification_file_name', None))
         if os.path.exists(yaml_file):
             mlflow.log_artifact(yaml_file)
 
@@ -451,19 +434,8 @@ class PipeLine:
             return
 
         import mlflow
-        for key_value_list in _get_dicts(self._parameters):
-            if not key_value_list:
-                continue
-            key_string = ''
-            value = key_value_list[-1]
-            # 리스트 값이 너무 길어질 수 있어 특정 문자열만 로깅.
-            if isinstance(value, list):
-                value = 'String List Type'
-            for child_key in key_value_list[:-1]:
-                key_string += f"{child_key}_"
-            key_string = key_string[:-1] # 마지막 _ 제거.
-
-            mlflow.log_param(key_string, value)
+        for k, v in self._parameters.items():
+            mlflow.log_param(k, str(v).replace("'", "\""))
 
     def mlflow_logging_classifier_parameter(
         self, name: str, classifier_dict: dict) -> None:
@@ -647,22 +619,11 @@ class PipeLine:
         from mlflow.models.signature import ModelSignature
         from mlflow.types.schema import Schema, ColSpec
 
-        def make_nested_json_from_parameters(key_list:list):
-            """파라미터에서 {root key: {child key: value}} 구조를
-                yield 하는 함수
-            """
-            for key in key_list:
-                for nested_data in _get_dicts(
-                    _validate(self._parameters, key)):
-                    if not nested_data:
-                        continue
-                    yield json.dumps(
-                        {key: {nested_data[0]: nested_data[1]}})
-
         schema_list = []
-        for schema in make_nested_json_from_parameters(
-            ['data', 'table', 'save_model']):
-            schema_list.append(ColSpec('string', schema))
+        for key in ['train_data', 'test_data', 'table', 'save_model']:
+            if self._parameters.get(key, None):
+                schema = json.dumps({key: self._parameters[key]})
+                schema_list.append(ColSpec('string', schema))
 
         mlflow.sklearn.log_model(
             sk_model=pipeline_tuple,

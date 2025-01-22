@@ -10,7 +10,9 @@ class DataContainer:
         self._x_data = x_data
         self._y_data = y_data
 
-        if isinstance(x_data, pd.DataFrame):
+        import re
+        import pandas as pd
+        if isinstance(x_data, pd.DataFrame) is True:
             # int64 -> int32. Reduce Memory.
             self._x_data = x_data.astype('int32')
             self._y_data = y_data.astype('int32')
@@ -18,9 +20,15 @@ class DataContainer:
             # LightGBM categorical feature 관련 에러
             # (Do not support special JSON characters in feature name.)
             # 컬럼명에 특정 특수문자 포함될 경우 회피하기 위해 제거.
-            import re
-            self._x_data = self._x_data.rename(
+            df = self._x_data.rename(
                 columns=lambda x: re.sub('[^A-Za-z0-9_/]+', '', x))
+
+            # 각 컬럼의 특수문자가 제거된 이후 중복 컬럼이 생길 경우 처리.
+            # 'test!!!~!_!@@@', 'test!!!_!' -> 'test_' 로 치환되면서 중복됨.
+            # 중복된 컬럼의 row 들의 합을 구하기 위해서는 지정된 index 없이
+            # level을 0 지정. (groupby를 통해 중복 컬럼이 병합되고
+            # 행에 따라 열 방향으로 sum이 적용됨)
+            self._x_data = df.T.groupby(level=0).sum().T
 
     @property
     def x_data(self):
@@ -185,5 +193,5 @@ class DataContainer:
 
             df.to_csv(csv_file_path, index=False)
 
-        except BaseException as ex:
-            print(ex)
+        except Exception as ex:
+            raise Exception(ex)

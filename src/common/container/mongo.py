@@ -1,55 +1,75 @@
-import pymongo
+import os
 from datetime import datetime
-from typing import Union, Callable, Any
+from typing import Any
 import inspect
-from common.function import get_code_line
 
-def verify_collection_object(func) -> Callable:
-    """Collection 객체 유효성 체크 데코레이터"""
-    def wrapper(self, *args, **kwargs):
-        if self._collection is None:
-            raise ValueError(
-                "Collection object is not initialized.",
-                get_code_line(inspect.currentframe()))
-        else:
-            return func(self, *args, **kwargs)
-    return wrapper
+import pymongo
+
+from common.function import get_code_line, singleton
 
 def _check_key_in_dict(value: dict) -> bool:
     """dictionary에 database, collection key 가 있는지 체크"""
-    if 'database' in value and 'collection' in value:
+    if not isinstance(value, dict):
+        return False
+    if ('database' in value) and ('collection' in value):
         return True
     else:
         return False
 
+@singleton
+class MongoDBConnection:
+    """pymongo connection object singleton."""
+    _connection = None # 스크립트 내 한번만 생성함.
+
+    @classmethod
+    def initialize(cls, url: str = ''):
+        """init."""
+        if url:
+            mongodb_url = url
+        else:
+            mongodb_url = os.environ.get('MONGODB_URL')
+        if not mongodb_url:
+            raise ValueError("'MONGODB_URL' environment variable not found.")
+        if cls._connection is None:
+            cls._connection = pymongo.MongoClient(
+                host=mongodb_url, directConnection=True)
+        return cls._connection
+
+    @classmethod
+    def close(cls):
+        """pymongo client close
+        
+        Description:
+            pymongo로 close 통지를 여러번 호출하면 디버거의 break point 및 \
+            call stack 위치에 따라 "ReferenceError: weakly-referenced \
+            object no longer exists" 에러가 발생할 수 있음.
+        """
+        if cls._connection is not None:
+            cls._connection.close()
+
 class MongoDB:
     """MongoDB Class"""
 
-    def __init__(self, database_name: str = ""):
+    def __init__(self, database_name: str):
         """Database 연결.
 
         Args:
             database_name (Database 명): Database 명
         """
-        import os
-        mongodb_url = os.environ.get('MONGODB_URL')
-        if not mongodb_url:
-            raise Exception('MONGODB_URL environment variable not found.')
-        self._connection = pymongo.MongoClient(
-            mongodb_url, directConnection=True)
+        self._connection = MongoDBConnection().initialize()
         self._database = None
         if database_name:
             self._database = self._connection.get_database(database_name)
 
-    def __del__(self) -> None:
-        """소멸자.
-        """
-        self.close()
-
     def close(self) -> None:
-        """ Database 객체 소멸"""
-        if self._connection:
-            self._connection.close()
+        """ Database 객체 소멸
+
+        Description:
+            pymongo로 close 통지를 여러번 호출하면 디버거의 break point 및 \
+            call stack 위치에 따라 "ReferenceError: weakly-referenced \
+            object no longer exists" 에러가 발생할 수 있음.
+        """
+        MongoDBConnection().close()
 
     def __enter__(self):
         return self
@@ -59,13 +79,18 @@ class MongoDB:
 
     @property
     def database(self):
-        """Get database object"""
-        return self._database
+        """get database object"""
+        if self._database is not None:
+            return self._database
+        else:
+            raise ValueError("MongoClient not initialized.")
 
     def get_database_list(self) -> list:
         """Get Database List."""
-        if self._connection:
+        if self._connection is not None:
             return self._connection.list_database_names()
+        else:
+            raise ValueError("MongoClient not initialized.")
 
     def get_collection_list(self) -> list:
         """Get collection List.
@@ -76,11 +101,84 @@ class MongoDB:
         Returns:
             list: collection name list.
         """
-        if not self._connection:
-            raise Exception('Database connection is not initialized.')
-
         if self._database is not None:
             return self._database.list_collection_names()
+        else:
+            raise ValueError("MongoClient not initialized.")
+
+    @staticmethod
+    def convert_datetime(datetime_string: str) -> datetime | None:
+        """문자열을 날짜값으로 변환.
+
+        Args:
+            datetime_string (str): YYYYMM, YYYYMMDD 형식의 문자열
+
+        Raises:
+            BaseException: 날짜 변환이 실패할 경우
+
+        Returns:
+            datetime.datetime: 변환된 날짜 데이터
+            None: 파라미터가 잘못될 경우, 날짜 변환이 실패할 경우
+        """
+        try:
+            if len(datetime_string) == 6: # YYYYMM format.
+                date = datetime.strptime(datetime_string, '%Y%m').date()
+            elif len(datetime_string) == 8: # YYYYMMDD format
+                date = datetime.strptime(
+                    datetime_string, '%Y%m%d').date()
+            else:
+                return None
+        except:
+            return None
+        return datetime(date.year, date.month, date.day)
+
+    @staticmethod
+    def make_datetime_query(start: str = '', end: str = '') -> dict:
+        """시작,종료 기간 값을 쿼리하기 위한 쿼리문 생성
+
+        Args:
+            start (str, optional): YYYYMMDD 문자열.
+            end (str, optional): YYYYMMDD 문자열.
+
+        Returns:
+            dict: {'start_date': datetime(), 'end_date': datetime()} 값
+        """
+        start_date = MongoDB.convert_datetime(datetime_string=start)
+        end_date = MongoDB.convert_datetime(datetime_string=end)
+
+        query = {}
+        if start_date:
+            query['start_date'] = start_date
+        if end_date:
+            query['end_date'] = end_date
+
+        return query
+
+    @staticmethod
+    def make_date_range_query_with_equal(
+        start_date: str = '', end_date: str = '') -> dict:
+        """데이터 컬렉션의 날짜 데이터를 쿼리하기 위한 조건문 생성.
+
+        Args:
+            start_date (str, optional): YYYYMM 형식의 문자열
+            end_date (str, optional): YYYYMM 형식의 문자열
+
+        Returns:
+            dict: 시작날짜 <= 데이터 <= 종료날짜를 쿼리할 수 있는 조건문
+        """
+        query = {}
+
+        if start_date:
+            start = MongoDB.convert_datetime(datetime_string=start_date)
+            if start:
+                query['$gte'] = start
+
+        if end_date:
+            end = MongoDB.convert_datetime(datetime_string=end_date)
+            if end:
+                query['$lte'] = end
+
+        return query
 
 class Collection(MongoDB):
     """Collection Class
@@ -92,43 +190,37 @@ class Collection(MongoDB):
         """컬렉션 연결 Object 초기화
 
         Args:
-            database_name (Database 명): 연결할 Database 명
-            collection_name (Collection 명): 연결할 Collection 명
+            database_name (str): 연결할 Database 명
+            collection_name (str): 연결할 Collection 명
         """
         super().__init__(database_name=database_name)
-        self._collection = self._database[collection_name]
+        self._collection = self.database[collection_name]
 
     @property
     def object(self):
-        """Get collection object"""
-        return self._collection
+        """get collection object"""
+        if self._collection is not None:
+            return self._collection
+        else:
+            ValueError("Collection object is not initialized.",
+                       get_code_line(inspect.currentframe()))
 
-    @verify_collection_object
     def show_all_documents(self) -> None:
-        """컬렉션 내 모든 document 출력"""
-        cursor = self._collection.find({})
+        """컬렉션 내 모든 document 출력."""
+        cursor = self.object.find({})
         for item in cursor:
             print(item)
 
-    @verify_collection_object
     def exists(self, key_name: str) -> bool:
-        """키가 있는지 체크
-
-        Args:
-            key_name (str): key 이름
-
-        Returns:
-            bool: 있으면 True, 없으면 False
-        """
-        cursor = self._collection.find_one({key_name: {"$exists": True}})
+        """키가 있는지 체크"""
+        cursor = self.object.find_one({key_name: {"$exists": True}})
         if cursor:
             return True
         else:
             return False
 
-    @verify_collection_object
     def rename_field_name(
-        self, origin: str, rename: str, filter_query: dict = None) -> Any:
+        self, origin: str, rename: str, filter_query = None) -> Any:
         """필드명 변경
 
         Args:
@@ -138,179 +230,99 @@ class Collection(MongoDB):
         """
         if not filter_query:
             filter_query = {}
-
-        return self._collection.update_many(
+        return self.object.update_many(
             filter_query, {"$rename": {origin: rename}})
 
-    @verify_collection_object
-    def insert_document(self, document: dict) -> None:
+    def insert_document(self, document: dict) -> Any:
         """컬렉션에 document 추가.
 
         Args:
             document (dict): 추가할 document
         """
-        return self._collection.insert_one(document)
+        return self.object.insert_one(document)
 
-    @verify_collection_object
-    def insert_document_many(self, documents: list) -> None:
+    def insert_document_many(self, documents: list) -> Any:
         """컬렉션에 document list 추가.
 
         Args:
             documents (list): document list
         """
-        return self._collection.insert_many(documents)
+        return self.object.insert_many(documents)
 
-    @verify_collection_object
-    def delete_document(self, filter_query: dict = None) -> None:
+    def delete_document(self, filter_query: dict) -> Any:
         """document 삭제.
 
         Args:
-            filter_query (dict, optional): filter query. Defaults to None.
+            filter_query (dict): filter query.
         """
-        self._collection.delete_one(filter_query)
+        return self.object.delete_one(filter_query)
 
-    @verify_collection_object
     def find_one_and_replace(
-        self, filter_query: dict, query: dict, upsert: bool = False) -> Any:
-        """하나의 document를 찾고 변경.
+        self, filter_query: dict, document: dict,
+        upsert: bool = True) -> Any:
+        """하나의 document를 찾고 전체 값을 변경.
 
         Args:
             filter_query (dict): 변경할 document에 대한 filter_query
-            query (dict): 변경 document
+            document (dict): 변경 document
             upsert (bool, optional): 없으면 insert. Defaults to False.
         """
-        return self._collection.find_one_and_replace(
-            filter_query, query, upsert=upsert)
+        return self.object.find_one_and_replace(
+            filter_query, document, upsert=upsert)
 
-    @staticmethod
-    def convert_datetime(date_time_string: str) -> Union[datetime, None]:
-        """문자열을 날짜값으로 변환.
+    def find_one_and_update(
+        self, filter_query: dict, set_value: dict,
+        upsert: bool = True) -> Any:
+        """하나의 document를 찾고 특정 dict 값을 변경.
 
         Args:
-            date_time_string (str): YYYYMM 형식의 문자열
+            filter_query (dict): 변경할 document에 대한 filter_query
+            set_value (dict): 변경할 key, value의 dict
+            upsert (bool, optional): 없으면 insert. Defaults to False.
+        """
+        return self.object.find_one_and_update(
+            filter_query, {'$set': set_value}, upsert=upsert)
+
+    def query_early_or_last_datetime(self, sort: int) -> datetime | None:
+        """'date' 값 중 가장 빠르거나 오래된 datetime 값 쿼리
+
+        Args:
+            sort (int): 1: 가장 오래된 날짜(오름차순).
+                       -1: 가장 빠른 날짜(내림차순).
 
         Raises:
-            BaseException: 날짜 변환이 실패할 경우
+            ValueError: sort가 1, -1이 아닐 경우
 
         Returns:
-            datetime.datetime: 변환된 날짜 데이터
-            None: 파라미터가 잘못될 경우, 날짜 변환이 실패할 경우
+            datetime | None: 변환된 날짜 데이터
         """
-        if not date_time_string:
+        match(sort):
+            case pymongo.ASCENDING: # 오름차순
+                pass
+            case pymongo.DESCENDING: # 내림차순
+                pass
+            case _:
+                raise ValueError(
+                    "'sort' value 'pymongo.ASCENDING' or"
+                    " 'pymongo.DESCENDING'.")
+
+        if not self.exists('date'):
             return None
-        try:
-            date = datetime.strptime(date_time_string, '%Y%m').date()
-        except BaseException:
+        # 전체 값 중 'date'만 쿼리하고 오름/내림 정렬 후 하나만 리턴.
+        result = list(
+            self.object.find(
+                {}, {'date': 1, '_id': 0}).sort([('date', sort)]).limit(1))[0]
+        if not result or 'date' not in result:
             return None
-        return datetime(date.year, date.month, date.day)
 
-    @verify_collection_object
-    def query_start_date(
-        self, start_date_string: str = None) -> Union[datetime, None]:
-        """문자열(YYYYMM)로 컬렉션 날짜 데이터 쿼리
+        return result['date']
 
-        Args:
-            start_date_string (str): YYYYMM 형식의 문자열 \
-                                    (None일 경우 컬렉션에서 \
-                                    가장 오래된 날짜 값 쿼리)
-
-        Raises:
-            ValueError: 쿼리 결과가 1개가 아닐경우
-
-        Returns:
-            datetime.datetime: 변환된 날짜 데이터
-
-        Description:
-            특정 컬렉션의 시작 날짜부터 쿼리하고 싶을 경우\
-            start_date_string=None 값으로 호출 가능
-        """
-        if start_date_string is None:
-            result = []
-            if self.exists('date'):
-                result = list(
-                    self._collection.find({}, {'date': 1, '_id': 0}).sort(
-                        [('date', pymongo.ASCENDING)]).limit(1))
-            if len(result) != 1:
-                raise ValueError('Query Result Must Be One.',
-                                 get_code_line(inspect.currentframe()))
-            return result[0]['date']
-        else:
-            return Collection.convert_datetime(
-                date_time_string=start_date_string)
-
-    @verify_collection_object
-    def query_end_date(
-        self, end_date_string: str = None) -> Union[datetime, None]:
-        """문자열(YYYYMM)로 컬렉션 날짜 데이터 쿼리
-
-        Args:
-            start_date_string (str): YYYYMM 형식의 문자열
-                                    (None일 경우 컬렉션에서 가장 최근 날짜 값 쿼리)
-
-        Raises:
-            ValueError: 쿼리 결과가 1개가 아닐경우
-
-        Returns:
-            datetime.datetime: 변환된 날짜 데이터
-
-        Description:
-            특정 컬렉션의 최근 날짜부터 쿼리하고 싶을 경우
-            start_date_string=None 값으로 호출 가능
-        """
-        if end_date_string is None:
-            result = []
-            if self.exists('date'):
-                result = list(
-                    self._collection.find({}, {'date': 1, '_id': 0}).sort(
-                        [('date', pymongo.DESCENDING)]).limit(1))
-            if len(result) != 1:
-                raise ValueError('Query Result Must Be One.',
-                                 get_code_line(inspect.currentframe()))
-            return result[0]['date']
-        else:
-            return Collection.convert_datetime(
-                date_time_string=end_date_string)
-
-    @staticmethod
-    def make_date_query_from_data_collection(
-        start_date: str = None, end_date: str = None,
-        ignore_convert_error = True) -> dict:
-        """데이터 컬렉션의 날짜 데이터를 쿼리하기 위한 조건문 생성.
-
-        Args:
-            start_date (str, optional): YYYYMM 형식의 문자열
-            end_date (str, optional): YYYYMM 형식의 문자열
-            ignore_convert_error(bool, optional): 문자열 -> 날짜로
-                변환 실패할 경우 쿼리문 생성을 실패 처리하는 Flag. default True.
-
-        Returns:
-            dictionary: 시작날짜 <= 데이터 <= 종료날짜를 쿼리할 수 있는 조건문
-        """
-        query = {}
-        if (start_date is None) and (end_date is None):
-            return query
-
-        if start_date:
-            start = Collection.convert_datetime(date_time_string=start_date)
-            if (ignore_convert_error is False) and (start is None):
-                return query
-            if start:
-                query['$gte'] = start
-        if end_date:
-            end = Collection.convert_datetime(date_time_string=end_date)
-            if (ignore_convert_error is False) and (end is None):
-                return query
-            if end:
-                query['$lte'] = end
-        return query
-
-    @verify_collection_object
-    def get_datetime_list_from_collection(
-            self, start_date: str = None, end_date: str = None) -> list:
-        """데이터 컬렉션으로부터 날짜 데이터의 개수를 쿼리함.
+    def get_collection_datetime_list(
+            self, start_date: str = '', end_date: str = '') -> list:
+        """컬렉션에서 날짜 데이터 리스트를 쿼리함.
            data Collection 일 경우: 시작날짜 <= 날짜 쿼리 <= 종료날짜
            data 외 Collection 일 경우: 시작날짜 이후의 종료 날짜 쿼리,
-                                       종료날짜 이전의 시작 날짜 쿼리
+                                      종료날짜 이전의 시작 날짜 쿼리
 
         Args:
             start_date (str, optional): YYYYMM 형식의 문자열
@@ -328,34 +340,32 @@ class Collection(MongoDB):
 
         # date 컬럼은 data database에만 존재함
         if self.exists(key_name='date'):
-            query = Collection.make_date_query_from_data_collection(
-                start_date=start_date,
-                end_date=end_date,
-                ignore_convert_error=False)
+            query = Collection.make_date_range_query_with_equal(
+                start_date=start_date, end_date=end_date)
             if query:
-                result = self._collection.find(
+                result = self.object.find(
                    {'date': query},
                    {'date': True}).distinct('date')
         else:
-            start_date_string = Collection.convert_datetime(
-                date_time_string=start_date)
-            end_date_string = Collection.convert_datetime(
-                date_time_string=end_date)
-            if start_date_string:
+            start_datetime = MongoDB.convert_datetime(
+                datetime_string=start_date)
+            end_datetime = MongoDB.convert_datetime(
+                datetime_string=end_date)
+
+            if start_datetime:
                 result = self.object.distinct(
-                    'end_date', {'start_date': start_date_string})
-            elif end_date_string:
+                    'end_date', {'start_date': start_datetime})
+            elif end_datetime:
                 result = self.object.distinct(
-                    'start_date', {'end_date': end_date_string})
+                    'start_date', {'end_date': end_datetime})
 
         return result
 
-    @verify_collection_object
-    def get_data_count_from_datetime(
-            self, start_date: str = None, end_date: str = None) -> int:
-        """컬렉션으로부터 해당 날짜의 데이터의 개수를 쿼리함.
-           data Collection 일 경우 : (시작날짜 <= 데이터 <= 종료날짜)
-           data 외 Collection 일 경우 : 쿼리에 시작, 종료날짜 포함
+    def get_count_from_datetime(
+            self, start_date: str = '', end_date: str = '') -> int:
+        """컬렉션에서 해당 날짜의 데이터 개수를 쿼리함.
+           'data' Collection 일 경우 : (시작날짜 <= 데이터 <= 종료날짜)
+           'data' 외 Collection 일 경우 : 쿼리에 시작, 종료날짜 포함
 
         Args:
             start_date (str, optional): YYYYMM 형식의 문자열
@@ -368,28 +378,25 @@ class Collection(MongoDB):
 
         # date 컬럼은 data database에만 존재함
         if self.exists(key_name='date'):
-            result = Collection.make_date_query_from_data_collection(
-                start_date=start_date, end_date=end_date,
-                ignore_convert_error=False)
+            result = Collection.make_date_range_query_with_equal(
+                start_date=start_date, end_date=end_date)
             if result:
                 query['date'] = result
         else:
-            if start_date:
-                query['start_date'] = Collection.convert_datetime(
-                    date_time_string=start_date)
-            if end_date:
-                query['end_date'] = Collection.convert_datetime(
-                    date_time_string=end_date)
+            query = Collection.make_datetime_query(
+                start=start_date, end=end_date)
 
         # 시작, 종료 날짜가 None이면 0 리턴
         if not query:
             return 0
 
-        return self._collection.count_documents(query)
+        return self.object.count_documents(query)
 
-    @classmethod
-    def get_data_list_from_data_dict(cls, data: dict) -> list:
-        """data dictionary 값을 통해 컬렉션으로부터 데이터를 쿼리함.
+class QueryBuilder:
+    """dict을 파라미터로 받는 method."""
+    @staticmethod
+    def get_data_list(data: dict) -> list:
+        """data dictionary 파라미터로 데이터를 쿼리함.
            (시작날짜 <= 데이터 <= 종료날짜)
 
         Args:
@@ -402,38 +409,39 @@ class Collection(MongoDB):
         Returns:
             list: 쿼리 결과를 list로 변환
         """
+        result = []
         if _check_key_in_dict(data) is False:
             raise ValueError("data not in 'database' or 'collection' key.",
                              get_code_line(inspect.currentframe()))
 
-        start_date = data['start_date'] if 'start_date' in data else None
-        end_date = data['end_date'] if 'end_date' in data else None
+        start_date = data.get('start_date', '')
+        end_date = data.get('end_date', '')
 
-        collection = cls(data['database'], data['collection'])
+        col = Collection(data['database'], data['collection'])
 
-        # 시작, 종료 날짜가 None이면 전체 데이터 쿼리
-        if (start_date is None) and (end_date is None):
-            result = collection.object.find({})
+        # 시작, 종료 날짜가 없으면 전체 데이터 쿼리.
+        if (not start_date) and (not end_date):
+            result = list(col.object.find({}))
         else:
-            query = cls.make_date_query_from_data_collection(
+            query = Collection.make_date_range_query_with_equal(
                 start_date=start_date, end_date=end_date)
-            if len(query) == 0:
-                result = collection.object.find({})
+            if not query:
+                result = list(col.object.find({}))
             else:
-                result = collection.object.find({'date': query})
+                result = list(col.object.find({'date': query}))
 
-        if result is None:
-            raise Exception('Cursor Object None.',
-                             get_code_line(inspect.currentframe()))
+        if not result:
+            raise Exception(
+                'Cursor Object None.', get_code_line(inspect.currentframe()))
 
-        return list(result)
+        return result
 
     @classmethod
     def query_table_data(cls, table: dict) -> dict:
-        """table collection에서 쿼리 결과 리턴.
+        """table dictionary 파라미터로 데이터를 쿼리함.
 
         Args:
-            table (dict): 'database','collection','start_date','end_date'
+            table (dict): 'database', 'collection', 'start_date', 'end_date'
 
         Raises:
             ValueError: parameter에 필수 key가 없을 경우
@@ -442,41 +450,29 @@ class Collection(MongoDB):
         Returns:
             dict: 쿼리 결과
         """
-        if _check_key_in_dict(table) is False:
+        if not _check_key_in_dict(table):
             raise ValueError(
                 "table not in 'database' or 'collection' key.",
                 get_code_line(inspect.currentframe()))
 
-        start_date = table['start_date'] if 'start_date' in table else None
-        end_date = table['end_date'] if 'end_date' in table else None
-
-        collection = cls(table['database'], table['collection'])
-        query = {}
-        if start_date:
-            start = cls.convert_datetime(date_time_string=start_date)
-            if start:
-                query['start_date'] = start
-        if end_date:
-            end = cls.convert_datetime(date_time_string=end_date)
-            if end:
-                query['end_date'] = end
-
-        if not query:
-            query = None
-
-        result = collection.object.find_one(query)
-        if result is None:
-            raise ValueError("Table Data Query Result None.",
-                             get_code_line(inspect.currentframe()))
-
-        if isinstance(result, dict) is False:
+        if ('start_date' not in table) or ('end_date' not in table):
             raise ValueError(
-                "Table Data Query Result is Not Dictionary Type.",
+                "table not in 'start_date' or 'end_date' key.",
                 get_code_line(inspect.currentframe()))
+        
+        col = Collection(table['database'], table['collection'])
+        query = MongoDB.make_datetime_query(
+            start=table.get('start_date', ''), end=table.get('end_date', ''))
+        if not query:
+            return {}
+        result = col.object.find_one(query)
+        if (not result) or (not isinstance(result, dict)):
+            raise ValueError("Table Data Query Result Empty.",
+                             get_code_line(inspect.currentframe()))
         return result
 
-    @classmethod
-    def get_columns_from_table_dict(cls, table: dict) -> list:
+    @staticmethod
+    def get_column_list(table: dict) -> list:
         """컬럼 정보 쿼리.
 
         Args:
@@ -488,19 +484,15 @@ class Collection(MongoDB):
         Returns:
             list: 컬럼 리스트
         """
-        if not table:
-            raise ValueError('table is None.',
-                             get_code_line(inspect.currentframe()))
-
-        result = cls.query_table_data(table=table)
+        result = QueryBuilder.query_table_data(table=table)
         if 'columns' not in result:
             raise ValueError("Query Result Not in 'column' key.",
                              get_code_line(inspect.currentframe()))
 
         return result['columns']
 
-    @classmethod
-    def get_id_from_table_dict(cls, table: dict) -> Any:
+    @staticmethod
+    def get_object_id(table: dict) -> Any:
         """table collection에서 쿼리 결과의 id를 리턴.
 
         Args:
@@ -511,21 +503,16 @@ class Collection(MongoDB):
             ValueError: 쿼리 결과에 _id 키가 없을 경우
 
         Returns:
-            [BSON]: 해당 document의 ObjectID
+            BSON: 해당 document의 ObjectID
         """
-        if not table:
-            raise ValueError('table is None.',
-                             get_code_line(inspect.currentframe()))
-
-        result = cls.query_table_data(table=table)
+        result = QueryBuilder.query_table_data(table=table)
         if '_id' not in result:
-            raise ValueError("Query Result Not in 'column' key.",
+            raise ValueError("Result not found '_id' key.",
                              get_code_line(inspect.currentframe()))
-
         return result['_id']
 
-    @classmethod
-    def get_field_list_from_data_dict(cls, data: dict) -> list:
+    @staticmethod
+    def get_field_list(data: dict) -> list:
         """특정 월별 데이터의 컬럼명을 aggregate하는 기능
 
         Args:
@@ -542,14 +529,12 @@ class Collection(MongoDB):
                 "Parameters not in 'database' or 'collection' key.",
                 get_code_line(inspect.currentframe()))
 
-        start_date = data['start_date'] if 'start_date' in data else None
-        end_date = data['end_date'] if 'end_date' in data else None
-
-        date_query = cls.make_date_query_from_data_collection(
-            start_date=start_date, end_date=end_date)
+        date_query = MongoDB.make_date_range_query_with_equal(
+            start_date=data.get('start_date', ''),
+            end_date=data.get('end_date', ''))
 
         query = []
-        if len(date_query) > 0:
+        if date_query:
             query.append({"$match": {"date": date_query}})
         # 필드값 -> array 로 변경
         query.append({"$project": {"o": {"$objectToArray": "$$ROOT"}}})
@@ -559,8 +544,8 @@ class Collection(MongoDB):
         query.append({"$group": {"_id": 0, "keys": {"$addToSet": "$o.k"}}})
 
         columns = []
-        collection = Collection(data['database'], data['collection'])
-        result = list(collection.object.aggregate(query))
+        col = Collection(data['database'], data['collection'])
+        result = list(col.object.aggregate(query))
         if not result:
             return columns
 
@@ -577,56 +562,45 @@ class Collection(MongoDB):
 
         return columns
 
-    @classmethod
-    def insert_model_information_from_dict(
-        cls, data: dict, table: dict, model: dict,
-        model_save_path_list: list) -> None:
+    @staticmethod
+    def insert_model_information(
+        train: dict, table: dict, model: dict,
+        model_save_path_list: list) -> Any:
         """모델 컬렉션에 정보 저장.
 
         Args:
-            data (dict): 'database', 'collection', 'start_date', 'end_date'
+            train (dict): 'database', 'collection', 'start_date', 'end_date'
             table (dict): 'database', 'collection', 'start_date', 'end_date'
             model (dict): 'database', 'collection', 'path'
             model_save_path_list (str): 저장된 모델 경로 리스트
+
         Raises:
             ValueError: 파라미터가 잘못된 경우
             ValueError: 파라미터에 필수 key 가 없을 경우
         """
-        if ((data is None) or (table is None) or (model is None) or
+        if ((train is None) or (table is None) or (model is None) or
             (not model_save_path_list)):
             raise ValueError("Parameters is None.",
                              get_code_line(inspect.currentframe()))
 
-        if ((_check_key_in_dict(data) is False) or
-            (_check_key_in_dict(table) is False) or
-            (_check_key_in_dict(model) is False)):
+        if ((not _check_key_in_dict(train)) or
+            (not _check_key_in_dict(table)) or
+            (not _check_key_in_dict(model))):
             raise ValueError(
-                "Parameters not in 'database' or 'collection' or 'model' key.",
+                "Parameters not in 'database', 'collection', 'model' key.",
                 get_code_line(inspect.currentframe()))
 
-        data_collection = cls(data['database'], data['collection'])
-        start = data_collection.query_start_date(
-            start_date_string=data['start_date'] \
-                if 'start_date' in data else None)
-        end = data_collection.query_end_date(
-            end_date_string=data['end_date'] if 'end_date' in data else None)
+        col = Collection(model['database'], model['collection'])
+        query = Collection.make_datetime_query(
+            start=train.get('start_date', ''), end=train.get('end_date', ''))
+        query['table'] = QueryBuilder.get_object_id(table=table)
 
-        query = {}
-        if start:
-            query['start_date'] = start
-        if end:
-            query['end_date'] = end
-        query['table'] = cls.get_id_from_table_dict(table=table)
+        return col.find_one_and_update(
+            filter_query=query,
+            set_value={'path': model_save_path_list})
 
-        model_collection = cls(model['database'], model['collection'])
-        model_collection.object.find_one_and_update(
-            query,
-            {'$set': {'path': model_save_path_list}},
-            upsert=True)
-        return
-
-    @classmethod
-    def get_model_list_from_dict(cls, model: dict, table: dict) -> list:
+    @staticmethod
+    def get_model_list(model: dict, table: dict) -> list:
         """모델 컬렉션에서 정보 쿼리.
 
         Args:
@@ -642,37 +616,22 @@ class Collection(MongoDB):
         Return:
             list: 모델 파일 경로 list
         """
-        if ((table is None) or (model is None)):
-            raise ValueError("Parameters is None.",
-                             get_code_line(inspect.currentframe()))
+        if (not model) or (not table):
+            raise ValueError(
+                "Parameter Empty.", get_code_line(inspect.currentframe()))
 
-        if ((_check_key_in_dict(table) is False) or
-            (_check_key_in_dict(model) is False)):
+        if ((not _check_key_in_dict(table)) or
+            (not _check_key_in_dict(model))):
             raise ValueError(
                 "Parameters not in 'database' or 'collection' key.",
                 get_code_line(inspect.currentframe()))
 
-        model_collection = cls(model['database'], model['collection'])
-        start = model_collection.query_start_date(
-            start_date_string=model['start_date'] \
-                if 'start_date' in model else None)
-        end = model_collection.query_end_date(
-            end_date_string=model['end_date'] if 'end_date' in model else None)
-
-        query = {}
-        if start:
-            query['start_date'] = start
-        if end:
-            query['end_date'] = end
-        query['table'] = cls.get_id_from_table_dict(table=table)
-
-        result = model_collection.object.find_one(query, {'path': 1})
-        if result is None:
-            raise ValueError('Query Model Data Empty.',
+        col = Collection(model['database'], model['collection'])
+        query = Collection.make_datetime_query(
+            start=model.get('start_date', ''), end=model.get('end_date', ''))
+        query['table'] = QueryBuilder.get_object_id(table=table)
+        result = col.object.find_one(query, {'path': 1})
+        if (not result) or ('path' not in result):
+            raise ValueError("Query result not in 'path' key.",
                              get_code_line(inspect.currentframe()))
-
-        if 'path' not in result:
-            raise ValueError("Query Result Not in 'path' key.",
-                             get_code_line(inspect.currentframe()))
-
         return result['path']

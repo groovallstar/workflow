@@ -1,4 +1,4 @@
-Workflow
+scikit-learn Toy dataset을 이용한 ML Pipeline
 ==============================
 
 ## Folder Structure ##

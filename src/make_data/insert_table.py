@@ -45,7 +45,7 @@ def insert_table(data, table) -> None:
 # VSCODE launch.json parameter example.
 # "args" : [
 #         "--data={\"database\": \"test\", \"collection\": \"iris.data\",
-#                  \"start_date\": \"202201\", \"end_date\": \"202201\"}",
+#                  \"start_date\": \"202501\", \"end_date\": \"202501\"}",
 #         "--table={\"database\": \"test\", \"collection\": \"iris.table\"}",
 # ]
 
@@ -65,11 +65,11 @@ def parse_commandline() -> dict:
          "start_date": Query Start Date(str)
          "end_date": Query End Date(str)
     e.g. (1) --data='{"database": "database", "collection": "collection",
-                      "start_date": "202201", "end_date": "202202"}'
-             => Query 202201 ~ 202202 Column List.
+                      "start_date": "202501", "end_date": "202202"}'
+             => Query 202501 ~ 202202 Column List.
     e.g. (2) --table='{"database":"database", "collection":"collection",
-                       "start_date": "202201", "end_date": "202202"}'
-             => Save Data's Column List 202201 ~ 202202 Date.
+                       "start_date": "202501", "end_date": "202202"}'
+             => Save Data's Column List 202501 ~ 202202 Date.
     ===========================================================================
     """)
     parser = argparse.ArgumentParser(

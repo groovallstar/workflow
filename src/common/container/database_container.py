@@ -4,13 +4,13 @@ import pandas as pd
 
 from common.function import get_code_line
 from common.container.base_container import DataContainer
-from common.container.mongo import Collection
+from common.container.mongo import QueryBuilder
 
 class DataBaseContainer(DataContainer):
     """Data Gather From Database"""
 
-    @staticmethod
-    def verify(data: dict, table: dict = None) -> bool:
+    @classmethod
+    def verify(cls, data: dict, table: dict = None) -> bool:
         """data 및 table 파라미터 검증
 
         Args:
@@ -18,7 +18,7 @@ class DataBaseContainer(DataContainer):
             table (dict, optional): 컬럼 로드할 파라미터
 
         Returns:
-            bool: True: 로드 가능한 파라미터가 있음
+            bool: True: 로드 가능한 파라미터가 있음 \
                   False: 해당 파라미터로 로드 불가능
         """
         # database명이 있을 경우는 컬렉션명도 같이 체크.
@@ -53,8 +53,8 @@ class DataBaseContainer(DataContainer):
             return x_data, y_data
 
         # database 정보를 통해 데이터 로드.
-        result_list = Collection.get_data_list_from_data_dict(data=data)
-        df = pd.DataFrame(result_list)
+        result = QueryBuilder.get_data_list(data=data)
+        df = pd.DataFrame(result)
 
         x_data = df.drop(['_id', 'label', 'date'], axis=1)
         y_data = df['label']
@@ -83,8 +83,7 @@ class DataBaseContainer(DataContainer):
             return feature_table
 
         # database 정보를 통해 데이터 로드.
-        feature_table = Collection.get_columns_from_table_dict(table=table)
-
+        feature_table = QueryBuilder.get_column_list(table=table)
         return feature_table
 
     @classmethod

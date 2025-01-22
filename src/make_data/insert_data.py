@@ -43,7 +43,7 @@ def procedure(
 # VSCODE launch.json parameter example.
 # "args" : [
 #     "--dataset=iris",
-#     "--database=database", "--collection=collection", "--date=202201"
+#     "--database=database", "--collection=collection", "--date=202501"
 # ]
 
 def parse_commandline() -> dict:
