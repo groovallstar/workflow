@@ -50,8 +50,8 @@ EOF
 # pip install list
 COPY ./client/requirements.txt .
 RUN <<EOF
-RUN python -m pip install --upgrade pip
-RUN pip install -r requirements.txt
+python -m pip install --upgrade pip
+pip install -r requirements.txt
 EOF
 
 # ssh 설정

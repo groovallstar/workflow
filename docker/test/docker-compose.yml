@@ -20,7 +20,7 @@ services:
         cd ${PYTHONPATH}/celery
         ./run-celery.sh
 
-  fastapi_test:
+  server_test:
     container_name: server_test
     extends:
       file: common-compose.yml

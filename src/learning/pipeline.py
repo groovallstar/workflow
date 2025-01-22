@@ -31,8 +31,7 @@ def _get_dicts(indict, prefix=None) -> Iterator[List[str]]:
 #                  \"start_date\" : \"202201\", \"end\" : \"202201\"}",
 #   "--table={\"database\":\"test\",\"collection\":\"table\",
 #             \"start_date\" : \"202201\",\"end\" : \"202201\"}",
-#   "--sampling=0.5", "--seed=123", "--show_data",
-#   "--classification_file_name=iris.yaml",
+#   "--seed=123", "--show_data", "--classification_file_name=iris.yaml",
 #   "--show_metric_by_thresholds=0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9",
 #   "--train", "--evaluate", "--show_optimal_metric",
 #   "--load_model={\"database\" : \"test\", \"collection\" : \"model\",
@@ -108,8 +107,6 @@ def parse_commandline() -> dict:
         '--run_name', default=None, type=str, help='Run Name.')
     parser.add_argument(
         '--data', type=json.loads, help='Train Data Dictionary.')
-    parser.add_argument(
-        '--sampling', default=None, type=float, help="Data Sampling.")
     parser.add_argument(
         '--seed', default=None, type=int, help="Seed.")
     parser.add_argument(
@@ -301,7 +298,6 @@ class PipeLine:
             data=_validate(self._parameters, 'data'),
             table=_validate(self._parameters, 'table'),
             split_ratio=_validate(options, 'split_ratio'),
-            sampling=_validate(self._parameters, 'sampling'),
             seed=_validate(self._parameters, 'seed'))
 
         # Classifier를 통한 모델 초기화 (명시적 호출 필요).

@@ -1,48 +1,14 @@
 services:
-  mongo1:
-    image: "mongo"
+  mongo_db:
+    image: mongo
+    container_name: mongodb_dev
     ports:
-      - "37017:27017"
+      - 37017:27017
     env_file:
       - .env
     volumes:
-      - ${MONGODB_REPL_1_PATH}:/data/db
-    networks:
-      - mongo-networks
-    command: mongod --replSet replication
-  mongo2:
-    image: "mongo"
-    ports:
-      - "37018:27017"
-    env_file:
-      - .env
-    volumes:
-      - ${MONGODB_REPL_2_PATH}:/data/db
-    networks:
-      - mongo-networks
-    command: mongod --replSet replication
-    depends_on:
-      - mongo1
-  mongo3:
-    image: "mongo"
-    ports:
-      - "37019:27017"
-    env_file:
-      - .env
-    volumes:
-      - ${MONGODB_REPL_3_PATH}:/data/db
-    networks:
-      - mongo-networks
-    command: mongod --replSet replication
-    depends_on:
-      - mongo2
-  mongosetup:
-    image: "setup-rspl"
-    depends_on:
-      - mongo1
-    networks:
-      - mongo-networks
-
-networks:
-  mongo-networks:
-    driver: bridge
+      - ${MONGODB_PATH}:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=root
+ 
