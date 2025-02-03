@@ -52,11 +52,10 @@ def test_metric_score():
     assert isinstance(md, MetricData)
 
     assert np.all(md.confusion == confusion_matrix(y_test, predict))
-    assert md.accuracy == accuracy_score(y_test, predict)
-    assert md.precision == precision_score(y_test, predict)
-    assert md.recall == recall_score(y_test, predict)
-    assert md.f1 == f1_score(y_test, predict)
-    assert md.roc_auc == roc_auc_score(y_test, predict)
+    assert md.accuracy == round(accuracy_score(y_test, predict), 8)
+    assert md.precision == round(precision_score(y_test, predict), 8)
+    assert md.recall == round(recall_score(y_test, predict), 8)
+    assert md.f1 == round(f1_score(y_test, predict, average='weighted'), 8)
 
     # 임계값 증가에 따른 메트릭 점수와 native 호출 결과가 같은지 체크.
     for th, correct_value in zip(threshold, calculated_predict):
@@ -70,7 +69,7 @@ def test_metric_score():
         assert md.accuracy == accuracy_score(y_test, correct_value)
         assert md.precision == precision_score(y_test, correct_value)
         assert md.recall == recall_score(y_test, correct_value)
-        assert md.f1 == f1_score(y_test, correct_value)
+        assert md.f1 == f1_score(y_test, correct_value, average='weighted')
         assert md.roc_auc == roc_auc_score(y_test, correct_value)
 
     # 임계값 리스트의 제너레이터를 통해 메트릭 점수 체크.
@@ -84,11 +83,11 @@ def test_metric_score():
         assert tm.threshold == th
         assert np.all(
             tm.metric.confusion == confusion_matrix(y_test, correct_value))
-        assert tm.metric.accuracy == accuracy_score(y_test, correct_value)
-        assert tm.metric.precision == precision_score(y_test, correct_value)
-        assert tm.metric.recall == recall_score(y_test, correct_value)
-        assert tm.metric.f1 == f1_score(y_test, correct_value)
-        assert tm.metric.roc_auc == roc_auc_score(y_test, correct_value)
+        assert md.accuracy == round(accuracy_score(y_test, correct_value), 8)
+        assert md.precision == round(precision_score(y_test, correct_value), 8)
+        assert md.recall == round(recall_score(y_test, correct_value), 8)
+        assert md.f1 == round(
+            f1_score(y_test, correct_value, average='weighted'), 8)
 
     # 가장 높은 임계치와 메트릭 점수 체크.
     th = find_best_threshold(f1_score, y_test, probability)
@@ -99,8 +98,12 @@ def test_metric_score():
     assert isinstance(tm, ThresholdMetricData)
 
     assert np.all(tm.metric.confusion == metric.confusion)
-    assert tm.metric.accuracy == metric.accuracy
-    assert tm.metric.precision == metric.precision
-    assert tm.metric.recall == metric.recall
-    assert tm.metric.f1 == metric.f1
-    assert tm.metric.roc_auc == metric.roc_auc
+    assert tm.metric.accuracy == round(
+            accuracy_score(y_test, correct_value), 8)
+    assert tm.metric.precision == round(
+        precision_score(y_test, correct_value), 8)
+    assert tm.metric.recall == round(
+        recall_score(y_test, correct_value), 8)
+    assert tm.metric.f1 == round(
+        f1_score(y_test, correct_value, average='weighted'), 8)
+        

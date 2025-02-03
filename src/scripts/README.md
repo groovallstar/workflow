@@ -29,7 +29,9 @@
         - --show_data=학습/검증/테스트 데이터에 대한 비율 출력
         - --seed=데이터 분할 및 모델 학습에 사용할 Random Seed 값
         - --classification_file_name=dataset에서 사용할 모델 및 Hyper Parameter 정보 파일명
-        
+        - --train_with_tuning=파라미터 튜닝 후 학습
+        - 각 알고리즘의 하이퍼 파라미터 갱신 후 학습
+        - '--classification_file_name'의 파일명에 hyper_parameter 갱신
         - --train=학습
         - --load_model={'database': 'database명', 'collection': 'collection명', 
                         'start_date': '시작날짜', 'end_date': '종료날짜'}
@@ -41,5 +43,3 @@
         - --show_optimal_metric=각 모델의 F1-Score가 가장 높은 임계값을 출력
         - --find_best_model=모델 중에서 F1-Score가 가장 높은 모델 정보 출력
         - --save_model={'database': 'database명', 'collection': 'collection명'}
-        - --grid_search=Ray Tune의 TuneGridSearchCV를 통해 Hyper Parameter 찾기
-        - --bayesian_optimizer=Ray Tune의 Bayesian TuneSearchCV를 통해 Hyper Parameter 찾기

@@ -1,6 +1,10 @@
 import os
 import inspect
-from typing import Iterator, List, Tuple, Any, Union
+import argparse
+import json
+import textwrap
+from typing import Iterator, List, Tuple, Any
+from common.container.mongo import MongoDBConnection
 
 from common.data_type import MetricData, MetricScoreInfo, BestModelScoreInfo
 from common.function import get_code_line, TempDir
@@ -18,20 +22,15 @@ from learning.model import Model
 #             \"start_date\" : \"202501\",\"end\" : \"202501\"}",
 #   "--seed=123", "--show_data", "--classification_file_name=iris.yaml",
 #   "--show_metric_by_thresholds=0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9",
-#   "--train", "--evaluate", "--show_optimal_metric",
+#   "--train", "--train_with_tuning", "--evaluate", "--show_optimal_metric",
 #   "--load_model={\"database\" : \"test\", \"collection\" : \"model\",
 #                  \"start_date\" : \"202501\", \"end_date\" : \"202501\"}",
-#   "--find_best_model", "--bayesian_optimizer",
+#   "--find_best_model",
 #   "--save_model={\"database\" : \"test\", \"collection\" : \"model\"}",
 # ]
 
 def parse_commandline() -> dict:
     """"커맨드라인 파싱"""
-
-    import argparse
-    import json
-    import textwrap
-
     description = textwrap.dedent("""
     ===========================================================================
     --data, table Example
@@ -106,6 +105,9 @@ def parse_commandline() -> dict:
     parser.add_argument(
         '--train', action='store_true', help="Do Train.")
     parser.add_argument(
+        '--train_with_tuning', action='store_true',
+        help="Train With Hyper Parameter Tuning.")
+    parser.add_argument(
         '--load_model', default=None, type=json.loads,
         help="Load Model Dictionary.")
     parser.add_argument(
@@ -118,12 +120,6 @@ def parse_commandline() -> dict:
         help="Show Optimal Metric.")
     parser.add_argument(
         '--find_best_model', action='store_true', help="Find Best Model.")
-    parser.add_argument(
-        '--grid_search', action='store_true',
-        help="Find Hyper Parameters by Grid Search.")
-    parser.add_argument(
-        '--bayesian_optimizer', action='store_true',
-        help="Find Hyper Parameters by Bayesian Optimizer.")
     parser.add_argument(
         '--save_model', default=None, type=json.loads,
         help="Save Model Dictionary.")
@@ -194,8 +190,8 @@ class PipeLine:
             raise Exception('Parameter is Invalid.')
 
         self._experiment = None
-        self._artifact_path = None
-        self._experiment_id = None
+        self._artifact_path = ''
+        self._experiment_id = ''
 
         if 'experiment' in self._parameters:
             self._use_mlflow = True
@@ -205,7 +201,7 @@ class PipeLine:
                 raise Exception('MLFLOW_URL environment variable not found.')
 
             import mlflow
-            mlflow.set_tracking_uri(mlflow_url)
+            mlflow.set_tracking_uri(uri=mlflow_url)
             self._experiment = mlflow.get_experiment_by_name(
                 self._parameters['experiment'])
             # 없으면 생성
@@ -243,7 +239,7 @@ class PipeLine:
         else:
             self.run_experiment()
 
-    def find_child_runs(self, active_run_id) -> Union[List, Any]:
+    def find_child_runs(self, active_run_id) -> List | Any:
         """현재 run에서 nested child run을 찾기위한 method
 
         Args:
@@ -284,15 +280,16 @@ class PipeLine:
             seed=self._parameters.get('seed', None))
 
         # Classifier를 통한 모델 초기화 (명시적 호출 필요).
-        model.init_model(
-            self._parameters.get('classification_file_name', None))
+        classifier_file_name = self._parameters.get(
+            'classification_file_name', None)
+        model.init_model(file_name=classifier_file_name)
 
         # 분리된 데이터 출력.
         if 'show_data' in self._parameters:
             TraceLog().info('- Split Data Information -')
             model.show_data()
 
-        # 모델 로드.
+        # 이미 학습된 모델 로드.
         if 'load_model' in self._parameters:
             TraceLog().info('- Start Load Model -')
             model.load_model(
@@ -301,51 +298,47 @@ class PipeLine:
 
         for name in self.mlflow_start_child_run(model.get_classifier_names()):
 
-            self.mlflow_logging_pipeline_parameters()
             TraceLog().info(f"============== Model:{name} ==============")
+            self.mlflow_logging_pipeline_parameters()
             # 학습.
             if 'train' in self._parameters:
                 TraceLog().info('- Start Train -')
-                model.train_by_name(name=name)
+                model.train(name=name)
+
+            # 파라미터 튜닝 및 학습.
+            if 'train_with_tuning' in self._parameters:
+                TraceLog().info('- Start Train With Tuning -')
+                parameters = model.tuning(
+                    name=name, update_file=classifier_file_name)
+                if parameters:
+                    TraceLog().info(f'Best Paramters=({parameters})')
+                model.train(name=name)
 
             # 평가.
             if 'evaluate' in self._parameters:
                 TraceLog().info('- Start Evaluate -')
-                model.evaluate_by_name(name=name)
+                model.evaluate_by_classifier_name(name=name)
 
             # 평가 지표 출력.
             if 'show_metric_by_thresholds' in self._parameters:
                 TraceLog().info('- Show Metrics to Evaluation by Threshold -')
                 threshold_list = self._parameters.get(
                     'show_metric_by_thresholds', None)
-                for data in model.get_evaluate_metrics_by_name(
+                for data in model.get_evaluate_metrics(
                     name=name, thresholds=threshold_list):
-                    if data.verify():
-                        TraceLog().info(f"Threshold:({data.threshold})")
-                        PipeLine.trace_metric(data.metric)
+                    TraceLog().info(f"Threshold:({data.threshold})")
+                    PipeLine.trace_metric(data.metric)
 
-            # 모델의 f1-score가 가장 높은 임계값과 평가 지표를 출력.
+            # 모델의 지정한 Score가 가장 높은 임계값과 평가 지표를 출력.
             if 'show_optimal_metric' in self._parameters:
                 TraceLog().info('- Show Optimal Metric -')
+                metric_name_list = [MetricData.str_f1()]
                 for metric_score_info in model.get_optimal_metrics(
-                    name=name, metric_name_list=[MetricData.str_f1()]):
+                    name=name, metric_name_list=metric_name_list):
                     PipeLine.trace_optimal_metric(
                         metric_score_info=metric_score_info)
                     self.mlflow_logging_optimal_metric(
                         metric_score_info=metric_score_info)
-
-            # Hyper Parameter 찾기.
-            if 'grid_search' in self._parameters:
-                TraceLog().info('- Start Grid Search -')
-                best_param = model.grid_search(name=name)
-                TraceLog().info(f'best param={best_param}')
-                self.mlflow_logging_hyper_parameters(best_param)
-
-            if 'bayesian_optimizer' in self._parameters:
-                TraceLog().info('- Start Bayesian Optimizer -')
-                max_value = model.get_hyper_parameters_by_bo(name=name)
-                TraceLog().info(f'best params={max_value}')
-                self.mlflow_logging_hyper_parameters(max_value)
 
             # 개별 모델 저장.
             if 'save_model' in self._parameters:
@@ -353,10 +346,14 @@ class PipeLine:
                 # mlflow로 모델 저장 시 자체 로컬 경로를 생성하여 저장함.
                 local_model_path = self.mlflow_save_model(
                     pipeline_tuple=model.get_pipeline_with_name(name=name))
+                # mlflow artifact 경로에 모델을 저장하므로 mlflow 설정없이는
+                # 로컬에 모델을 저장할 수 없음
+                if not local_model_path:
+                    raise ValueError('MLFlow parameter are required '
+                                  'to create model local path.')
                 # 리턴 받은 실제 경로를 model 클래스에 다시 세팅함.
                 model.set_save_model_file(
-                    name=name,
-                    model_file=local_model_path)
+                    name=name, model_file=local_model_path)
 
         # model 객체에 개별 저장된 경로를 Database에 저장.
         # (개별 모델의 루프가 종료된 후 다시 저장 해야 함)
@@ -415,15 +412,8 @@ class PipeLine:
             # 현재 run 에서 로그 파일 로깅함
             mlflow.log_artifact(trace_log_path)
 
-            # nested child run 에 기록하면 duration 값이 갱신되므로
-            # 똑같은 로그를 남기지 않도록 함.
-            # runs = self.find_child_runs(mlflow.active_run().info.run_id)
-            # for (_, row) in runs.iterrows():
-            #     with mlflow.start_run(
-            #         run_id=row['run_id'], nested=True):
-            #         mlflow.log_artifact(trace_log_path)
-
-        yaml_file = Classifier.get_classification_path_from_file_name(
+        # 파라미터 파일 로깅함
+        yaml_file = Classifier.get_yml_file_path(
             self._parameters.get('classification_file_name', None))
         if os.path.exists(yaml_file):
             mlflow.log_artifact(yaml_file)
@@ -438,7 +428,7 @@ class PipeLine:
             mlflow.log_param(k, str(v).replace("'", "\""))
 
     def mlflow_logging_classifier_parameter(
-        self, name: str, classifier_dict: dict) -> None:
+        self, name: str, parameter_file_name: str) -> None:
         """mlflow에 classifier 파라미터를 파라미터 항목에 로깅"""
         if not self._use_mlflow:
             return
@@ -453,8 +443,12 @@ class PipeLine:
                     key = key.replace('clf__', '')
                 yield {key: value}
 
+        classifier = Classifier(file_name=parameter_file_name)
+        hyper_param = classifier.get_hyper_parameter(name=name)
+        if not hyper_param:
+            return
+
         import mlflow
-        hyper_param = classifier_dict[name][Classifier.Index.HYPER_PARAMETER]
         for remove_dict in remove_prefix(hyper_param):
             mlflow.log_params(remove_dict)
 
@@ -471,17 +465,21 @@ class PipeLine:
             return
 
         import mlflow
-        if metric.accuracy:
-            mlflow.log_metric(metric.str_accuracy(), metric.accuracy)
-        if metric.precision:
-            mlflow.log_metric(metric.str_precision(), metric.precision)
-        if metric.recall:
-            mlflow.log_metric(metric.str_recall(), metric.recall)
-        if metric.f1:
-            mlflow.log_metric(metric.str_f1(), metric.f1)
-        if metric.roc_auc:
-            if isinstance(metric.roc_auc, dict) is False:
-                mlflow.log_metric(metric.str_roc_auc(), metric.roc_auc)
+        # 모든 metric은 0.0일 경우도 있어 유효성 체크하지 않고 기록함
+        if isinstance(metric.accuracy, float):
+            mlflow.log_metric(metric.str_accuracy(), round(metric.accuracy, 4))
+        if isinstance(metric.precision, float):
+            mlflow.log_metric(metric.str_precision(),round(metric.precision, 4))
+        if isinstance(metric.recall, float):
+            mlflow.log_metric(metric.str_recall(), round(metric.recall, 4))
+        if isinstance(metric.f1, float):
+            mlflow.log_metric(metric.str_f1(), round(metric.f1, 4))
+        if isinstance(metric.roc_auc, float):
+            mlflow.log_metric(metric.str_roc_auc(), metric.roc_auc, 4)
+        if isinstance(metric.miss_rate, float):
+            mlflow.log_metric(metric.str_miss_rate(), round(metric.miss_rate, 4))
+        if isinstance(metric.fall_out, float):
+            mlflow.log_metric(metric.str_fall_out(), round(metric.fall_out, 4))
 
     def mlflow_logging_optimal_metric(
         self, metric_score_info: MetricScoreInfo) -> None:
@@ -498,13 +496,13 @@ class PipeLine:
             (not metric_score_info)):
             return
 
-        if metric_score_info.verify():
-            if metric_score_info.metric_name == MetricData.str_f1():
-                import mlflow
-                mlflow.set_tag('Best F1-Score Threshold',
-                               str(metric_score_info.score_info.threshold))
-                self.mlflow_logging_metric(
-                    metric=metric_score_info.score_info.metric)
+        # 현재 평가지표로 사용하는 메트릭은 f1-score
+        if metric_score_info.metric_name == MetricData.str_f1():
+            import mlflow
+            mlflow.set_tag('best_threshold',
+                           str(metric_score_info.score_info.threshold))
+            self.mlflow_logging_metric(
+                metric=metric_score_info.score_info.metric)
 
     def mlflow_logging_hyper_parameters(self, best_param: dict) -> None:
         """찾은 Hyper Parameter를 mlflow tag에 로깅
@@ -560,6 +558,12 @@ class PipeLine:
             else:
                 message += (f"{metric.str_roc_auc()}=({metric.roc_auc:.4f})")
         TraceLog().info(message)
+        # 미탐, 과탐률은 0.0일 경우도 있어 유효성 체크하지 않고 기록함
+        message = ""
+        message = f"{metric.str_miss_rate()}=({metric.miss_rate:.4f}) "
+        message += f"{metric.str_fall_out()}=({metric.fall_out:.4f})"
+
+        TraceLog().info(message)
 
     @staticmethod
     def trace_optimal_metric(metric_score_info: MetricScoreInfo) -> None:
@@ -578,15 +582,14 @@ class PipeLine:
         if not message:
             return
 
-        if metric_score_info.verify():
-            TraceLog().info(message)
-            TraceLog().info(
-                f"Threshold:{metric_score_info.score_info.threshold}")
-            PipeLine.trace_metric(metric_score_info.score_info.metric)
+        TraceLog().info(message)
+        TraceLog().info(
+            f"Threshold:{metric_score_info.score_info.threshold}")
+        PipeLine.trace_metric(metric_score_info.score_info.metric)
 
     @staticmethod
     def trace_highest_score(score_info:BestModelScoreInfo) -> None:
-        """전체 모델 중 f1-score 가 가장 높게 나온 모델의\
+        """전체 모델 중 f1-score가 가장 높게 나온 모델의\
            임계값과 메트릭 출력
 
         Args:
@@ -596,11 +599,10 @@ class PipeLine:
             (not score_info)):
             return
 
-        if score_info.highest_f1.verify():
-            TraceLog().info('============== Highest F1-Score ==============')
-            TraceLog().info(f"Model:{score_info.highest_f1.name}")
-            TraceLog().info(f"Threshold:{score_info.highest_f1.threshold}")
-            PipeLine.trace_metric(score_info.highest_f1.metric)
+        TraceLog().info(f"{'='*17} Highest F1-Score {'='*17}")
+        TraceLog().info(f"Model:{score_info.highest_f1.name}")
+        TraceLog().info(f"Threshold:{score_info.highest_f1.threshold}")
+        PipeLine.trace_metric(score_info.highest_f1.metric)
 
     def mlflow_save_model(self, pipeline_tuple: Tuple[str, Any]) -> str:
         """mlflow에 학습한 개별 모델을 업로드
@@ -612,10 +614,10 @@ class PipeLine:
             str: mlflow API를 통해 저장된 실제 경로
         """
         if not self._use_mlflow:
-            return
+            return ''
 
         import mlflow
-        import json
+        import mlflow.sklearn
         from mlflow.models.signature import ModelSignature
         from mlflow.types.schema import Schema, ColSpec
 
@@ -625,10 +627,22 @@ class PipeLine:
                 schema = json.dumps({key: self._parameters[key]})
                 schema_list.append(ColSpec('string', schema))
 
+        # 저장하려는 모델의 package 버전을 추가함
+        requirements_list = []
+        requirements_list.append(
+            Classifier.get_pip_package_string(Classifier.RANDOMFOREST))
+        if pipeline_tuple[0] != Classifier.RANDOMFOREST:
+            # sklearn을 중복해서 추가할 필요 없음
+            requirements_list.append(
+                Classifier.get_pip_package_string(pipeline_tuple[0]))
+
+        # pip_requirements나 conda_env에 pip 값을 추가하면 자동으로
+        # mlflow 버전이 추가됨
         mlflow.sklearn.log_model(
             sk_model=pipeline_tuple,
             artifact_path='model',
-            signature=ModelSignature(inputs=Schema(schema_list)))
+            signature=ModelSignature(inputs=Schema(schema_list)),
+            pip_requirements=requirements_list,)
 
         # mlflow에서 지정된 모델명
         local_model_path = os.path.join(
@@ -649,12 +663,8 @@ class PipeLine:
         if not self._use_mlflow:
             return
 
-        if ((isinstance(score_info, BestModelScoreInfo) is False) or
+        if ((not isinstance(score_info, BestModelScoreInfo)) or
             (not score_info)):
-            return
-
-        # f1-score가 가장 높은 모델을 부모 experiment에 기록함
-        if score_info.highest_f1.verify() is False:
             return
 
         import mlflow
@@ -671,11 +681,11 @@ class PipeLine:
             active_run_id = mlflow.active_run().info.run_id
             run_object = mlflow.get_run(run_id=active_run_id)
 
-            # 이미 해당 run에 notes가 있으면 append
+            # 이미 해당 run에 notes가 있으면 append 해야함
             note_content = None
             if 'mlflow.note.content' in run_object.data.tags:
-                note_content=\
-                    run_object.data.tags['mlflow.note.content'] + '\n\n'
+                note_content = run_object.data.tags\
+                                    ['mlflow.note.content'] + '\n\n'
 
             # mlflow에서 저장된 로컬 경로에서 해당 run id 추출
             model_run_id = None
@@ -686,25 +696,26 @@ class PipeLine:
 
             # 바로 접근할 수 있는 url 생성
             model_url = (f'{mlflow.get_tracking_uri()}/#/'
-                            f'experiments/{self._experiment_id}/'
-                            f'runs/{model_run_id}/artifactPath/models\n')
+                         f'experiments/{self._experiment_id}/'
+                         f'runs/{model_run_id}/artifactPath/models\n')
             note_content += f'Best Model URL\n{model_url}'
             mlflow.set_tag('mlflow.note.content', note_content)
 
-        mlflow.set_tag('Best F1-Score Model Name', score_info.highest_f1.name)
-        mlflow.set_tag('Best F1-Score Threshold',
-                       str(score_info.highest_f1.threshold))
+        mlflow.set_tag('best_model', score_info.highest_f1.name)
+        mlflow.set_tag('best_threshold', str(score_info.highest_f1.threshold))
+
+        # f1-score를 로깅함
         self.mlflow_logging_metric(metric=score_info.highest_f1.metric)
 
 if __name__ == "__main__":
 
+    # mlflow logging 과 따로 남기기 위해 로그 객체 새로 생성
+    log = init_log_object(log_file_name=get_log_file_name(__file__))
+
     try:
-        log = init_log_object(log_file_name=get_log_file_name(__file__))
-        log.info('=========== Start ===========')
-
+        log.info('========================= Start ========================')
+        MongoDBConnection().initialize()
         options = parse_commandline_to_pipeline_dict()
-
-        from common.function import TempDir
         with TempDir(prefix='mlflow_') as tmp:
             trace_path = tmp.path('trace')
             os.mkdir(trace_path)
@@ -715,7 +726,9 @@ if __name__ == "__main__":
             p.start()
 
     except BaseException as e:
-        log.info(f"Error occurred. Message:{e}")
+        import traceback
+        log.info(f"Error occurred. Message:{e} {traceback.format_exc()}")
 
     finally:
-        log.info('===========  End  ===========')
+        MongoDBConnection().close()
+        log.info('========================== End =========================')

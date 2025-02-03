@@ -1,5 +1,6 @@
 """evaluation.py"""
 import inspect
+from typing import Iterator
 import numpy as np
 
 from common.data_type import MetricData, ThresholdMetricData
@@ -43,54 +44,33 @@ def get_evaluation_metric(y_test, predict) -> MetricData:
 
     Returns:
         MetricData: confusion matrix, accuracy, precision, recall,\
-                    f1 score, roc-auc 값
+                    f1 score, weighted f1 score, fbeta score(2, 0.5),\
+                    roc-auc, miss rate, fall out 값
     """
     if (y_test is None) or (predict is None):
         raise BufferError('y_test or predict Value Empty.',
                          get_code_line(inspect.currentframe()))
 
-    from sklearn.metrics import confusion_matrix
-    from sklearn.metrics import accuracy_score, precision_score
-    from sklearn.metrics import recall_score, f1_score, roc_auc_score
-    if len(y_test.unique()) > 2:
-        def roc_auc_score_multiclass(
-            actual_class, pred_class, average = "macro") -> dict:
-            """get roc_auc_score for multiclass"""
-            unique_class = set(actual_class)
-            roc_auc_dict = {}
-            for per_class in unique_class:
-                other_class = [x for x in unique_class if x != per_class]
-                new_actual_class = [0 if x in other_class \
-                                    else 1 for x in actual_class]
-                new_pred_class = [0 if x in other_class \
-                                  else 1 for x in pred_class]
-                roc_auc = roc_auc_score(
-                    new_actual_class, new_pred_class, average=average)
-                roc_auc_dict[per_class] = roc_auc
-            return roc_auc_dict
-
-        roc_auc = roc_auc_score_multiclass(y_test, predict)
-    else:
-        roc_auc = roc_auc_score(y_test, predict)
-
     metric = MetricData(
-        confusion=confusion_matrix(y_test, predict),
-        accuracy=accuracy_score(y_test, predict),
-        precision=precision_score(y_test, predict, average='macro'),
-        recall=recall_score(y_test, predict, average='macro'),
-        f1=f1_score(y_test, predict, average='macro'),
-        roc_auc=roc_auc)
-
+            confusion=MetricData.get_confusion_matrix(y_test, predict),
+            accuracy=MetricData.get_accuracy_score(y_test, predict),
+            precision=MetricData.get_precision_score(y_test, predict),
+            recall=MetricData.get_recall_score(y_test, predict),
+            f1=MetricData.get_f1_score(y_test, predict),
+            roc_auc=MetricData.get_roc_auc_score(y_test, predict),
+            miss_rate=MetricData.get_miss_rate_score(y_test, predict),
+            fall_out=MetricData.get_fall_out_score(y_test, predict),
+            specificity=MetricData.get_specificity_score(y_test, predict),)
     return metric
 
 def get_metric(
-    y_test, predict, probability, threshold:float=None) -> MetricData:
+    y_test, predict, probability, threshold:float=0.0) -> MetricData:
     """Threshold 값에 따라 평가 지표 리턴
 
     Args:
         y_test (np.ndarray): 타겟 레이블 값
         probability (np.ndarray): 예측 확률 값
-        threshold (float): 임계값. None 이면 기본 0.5 값으로 평가
+        threshold (float) : 임계값. None 이면 기본 0.5 값으로 평가
 
     Raises:
         TypeError: threshold가 float 타입이 아닐 경우
@@ -105,20 +85,20 @@ def get_metric(
 
     if isinstance(threshold, float) is False:
         raise TypeError('threshold Type Must Float.',
-                         get_code_line(inspect.currentframe()))
+                        get_code_line(inspect.currentframe()))
 
     predict_by_threshold = get_probability_by_binarizer(
         threshold=threshold, probability=probability)
-
     return get_evaluation_metric(y_test, predict_by_threshold)
 
 def get_metrics_by_threshold(
-    y_test, predict, probability, thresholds: list) -> ThresholdMetricData:
+    y_test, predict, probability, thresholds: list
+    ) -> Iterator[ThresholdMetricData]:
     """Threshold 값에 따라 평가 지표 제너레이터
 
     Args:
         y_test: Target 값
-        probability: 예측 값
+        predict: 예측 값
         probability: 예측 확률 값
         thresholds (list): 0-1 사이의 값으로 이루어진 list 값 e.g. [0.1,0.8]
 
@@ -126,7 +106,7 @@ def get_metrics_by_threshold(
         TypeError: thresholds 가 list 타입이 아닐 경우
 
     Returns:
-        ThresholdMetricData: threshold, MetricData
+        ThresholdMetricData : threshold, MetricData
     """
     if (thresholds is None) or (isinstance(thresholds, list) is False):
         raise TypeError('thresholds is None or Not List Type.')
@@ -177,8 +157,7 @@ def find_best_threshold(
         predict_by_threshold = get_probability_by_binarizer(th, probability)
 
         # 메트릭 함수 호출
-        metrics = metric_function(
-            y_test, predict_by_threshold, average='macro')
+        metrics = metric_function(y_test, predict_by_threshold)
         score_list = np.append(score_list, metrics)
 
     if score_list.size:

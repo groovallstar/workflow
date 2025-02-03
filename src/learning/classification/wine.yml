@@ -1,62 +1,94 @@
---- # start
-
 RandomForest:
-  hyper_parameter: {
-    'clf__n_estimators': 1000,
-    'clf__max_depth': 10,
-    'clf__max_features': 'sqrt',
-  }
-  bayesian_parameter: {
-     'clf__n_estimators': !!python/tuple [1000, 2000],
-  }
-  grid_search_parameter: {
-    'clf__n_estimators': [1000, 1500, 2000],
-  }
-
+  hyper_parameter:
+    clf__max_features: sqrt
+    clf__n_estimators: 1382
+    clf__max_depth: 7
+    clf__min_samples_leaf: 83
+    clf__min_samples_split: 64
+    clf__n_jobs: -1
+    clf__random_state: null
+  tuning_parameter:
+    base_parameter:
+      clf__max_features: sqrt
+      clf__n_jobs: -1
+    search_parameter:
+      clf__n_estimators:
+      - 1000
+      - 1500
 LightGBM:
-  hyper_parameter: {
-    'clf__objective': 'multiclass',
-    'clf__metric': 'multi_logloss',
-    'clf__boosting_type': 'dart',
-    'clf__n_estimators': 1000,
-    'clf__learning_rate': 0.01,
-    'clf__max_depth': 10,
-  }
-  bayesian_parameter: {
-    'clf__n_estimators': !!python/tuple [1000, 2000],
-  }
-  grid_search_parameter: {
-    'clf__n_estimators': [1000, 1500, 2000],
-  }
-
+  hyper_parameter:
+    clf__objective: multiclass
+    clf__metric: multi_logloss
+    clf__n_estimators: 1401
+    clf__learning_rate: 0.04887635109160091
+    clf__max_depth: 7
+    clf__min_child_samples: 159
+    clf__num_leaves: 75
+    clf__n_jobs: -1
+    clf__random_state: null
+    clf__min_data_in_leaf: 135
+    clf__deterministic: true
+    clf__verbose: -1
+    clf__is_unbalance: true
+  tuning_parameter:
+    base_parameter:
+      clf__objective: multiclass
+      clf__metric: multi_logloss
+      clf__deterministic: true
+      clf__is_unbalance: true
+      clf__verbose: -1
+      clf__n_jobs: -1
+    search_parameter:
+      clf__n_estimators:
+      - 1000
+      - 1500
 XGBoost:
-  hyper_parameter: {
-    'clf__n_estimators': 1000,
-    'clf__learning_rate': 0.01,
-    'clf__objective': 'multi:softmax',
-    'clf__eval_metric': 'logloss',
-  }
-  bayesian_parameter: {
-    'clf__n_estimators': !!python/tuple [1000, 2000],
-  }
-  grid_search_parameter: {
-    'clf__n_estimators': [1000, 1500, 2000],
-  }
-
+  hyper_parameter:
+    clf__objective: multi:softmax
+    clf__learning_rate: 0.0002048722867596822
+    clf__max_depth: 6
+    clf__gamma: 0.48025813760737684
+    clf__verbosity: 0
+    clf__random_state: null
+    clf__n_jobs: null
+    clf__n_estimators: 1310
+    clf__tree_method: approx
+    clf__eval_metric: mlogloss
+    clf__colsample_bytree: 0.7552802767272006
+    clf__colsample_bylevel: 0.6292746332763971
+    clf__colsample_bynode: 0.7172517866335829
+    clf__disable_default_eval_metric: true
+  tuning_parameter:
+    base_parameter:
+      clf__objective: multi:softmax
+      clf__disable_default_eval_metric: true
+      clf__eval_metric: mlogloss
+      clf__tree_method: approx
+      clf__verbosity: 0
+      clf__n_jobs: null
+    search_parameter:
+      clf__n_estimators:
+      - 1000
+      - 1500
 CatBoost:
-  hyper_parameter: {
-    'clf__iterations': 1000,
-    'clf__learning_rate': 0.01,
-    'clf__depth': 10,
-    'clf__loss_function': 'MultiClass',
-    'clf__thread_count': -1,
-    'clf__verbose': False,
-  }
-  bayesian_parameter: {
-    'clf__n_estimators': !!python/tuple [1000, 2000],
-  }
-  grid_search_parameter: {
-    'clf__n_estimators': [1000, 1500, 2000],
-  }
-
-... # end
+  hyper_parameter:
+    clf__loss_function: MultiClass
+    clf__iterations: 1258
+    clf__learning_rate: 0.004365778016454936
+    clf__depth: 6
+    clf__l2_leaf_reg: 10
+    clf__border_count: 254
+    clf__verbose: false
+    clf__random_state: null
+    clf__thread_count: -1
+    clf__min_data_in_leaf: 155
+  tuning_parameter:
+    base_parameter:
+      clf__loss_function: MultiClass
+      clf__border_count: 254
+      clf__thread_count: -1
+      clf__verbose: false
+    search_parameter:
+      clf__iterations:
+      - 1000
+      - 1500

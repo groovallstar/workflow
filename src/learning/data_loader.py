@@ -1,8 +1,8 @@
-from typing import Type, Any
+from typing import Tuple, Any
 
 import pandas as pd
 
-from common.function import timeit
+from common.function import timeit, conditional_decorator
 from common.trace_log import TraceLog
 
 class DataLoader:
@@ -30,10 +30,10 @@ class DataLoader:
         self._y_test = y_test
 
     @classmethod
-    @timeit
+    @conditional_decorator(timeit, True)
     def prepare_data(cls,
                      data: dict, table: dict, split_ratio: dict = None,
-                     sampling: float = None, seed: int = None) -> Type[Any]:
+                     sampling: float = None, seed: int = None):
         """데이터 로드 및 가공 작업
         data 값
         Format: {'database': str, 'collection': str,
@@ -58,12 +58,15 @@ class DataLoader:
                                         Defaults to None.
             seed (int, optional): RandomState값. Defaults to None.
         """
+        # 학습데이터가 없을 경우
+        if not data:
+            raise ValueError("data Parameter empty.")
         x_train, x_validation, x_test = (pd.DataFrame(),
                                          pd.DataFrame(),
                                          pd.DataFrame())
-        y_train, y_validation, y_test = (pd.Series(dtype='uint32'),
-                                         pd.Series(dtype='uint32'),
-                                         pd.Series(dtype='uint32'))
+        y_train, y_validation, y_test = (pd.Series(dtype='int32'),
+                                         pd.Series(dtype='int32'),
+                                         pd.Series(dtype='int32'))
 
         # load data
         from common.container.database_container import DataBaseContainer

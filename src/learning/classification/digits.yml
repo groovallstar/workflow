@@ -1,7 +1,7 @@
 RandomForest:
   hyper_parameter:
     clf__max_features: sqrt
-    clf__n_estimators: 1315
+    clf__n_estimators: 1401
     clf__max_depth: 7
     clf__min_samples_leaf: 83
     clf__min_samples_split: 64
@@ -19,10 +19,11 @@ LightGBM:
   hyper_parameter:
     clf__objective: multiclass
     clf__metric: multi_logloss
-    clf__n_estimators: 1401
+    clf__n_estimators: 1071
     clf__learning_rate: 0.04887635109160091
     clf__max_depth: 7
     clf__min_child_samples: 159
+    clf__colsample_bytree: 0.5882559438251592
     clf__num_leaves: 75
     clf__n_jobs: -1
     clf__random_state: null
@@ -51,7 +52,7 @@ XGBoost:
     clf__verbosity: 0
     clf__random_state: null
     clf__n_jobs: null
-    clf__n_estimators: 1207
+    clf__n_estimators: 1338
     clf__tree_method: approx
     clf__eval_metric: mlogloss
     clf__colsample_bytree: 0.7552802767272006
@@ -73,7 +74,7 @@ XGBoost:
 CatBoost:
   hyper_parameter:
     clf__loss_function: MultiClass
-    clf__iterations: 1491
+    clf__iterations: 1105
     clf__learning_rate: 0.004365778016454936
     clf__depth: 6
     clf__l2_leaf_reg: 10

@@ -12,8 +12,6 @@
 # --load_model='{"database":"test", "collection":"model", "start_date":"202501", "end_date":"202501"}' \
 # --evaluate \
 # --show_metric_by_thresholds="0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9" \
-# --grid_search \
-# --bayesian_optimizer \
 # --show_optimal_metric \
 # --find_best_model \
 # --save_model='{"database":"test", "collection":"model"}' \
@@ -42,13 +40,13 @@ python $PYTHONPATH/learning/pipeline.py --run_name="predict breast_cancer data" 
 --show_optimal_metric \
 --find_best_model
 
-python $PYTHONPATH/learning/pipeline.py --run_name="predict digit data" --experiment="digit" \
---data='{"database":"test", "collection": "digit.data", "start_date": "202501", "end_date": "202501"}' \
---table='{"database":"test", "collection": "digit.table", "start_date": "202501", "end_date": "202501"}' \
+python $PYTHONPATH/learning/pipeline.py --run_name="predict digits data" --experiment="digit" \
+--data='{"database":"test", "collection": "digits.data", "start_date": "202501", "end_date": "202501"}' \
+--table='{"database":"test", "collection": "digits.table", "start_date": "202501", "end_date": "202501"}' \
 --split_ratio='{"test": "1.0"}' \
---classification_file_name=digit.yml \
+--classification_file_name=digits.yml \
 --show_data \
---load_model='{"database":"test", "collection":"digit.model", "start_date":"202501", "end_date":"202501"}' \
+--load_model='{"database":"test", "collection":"digits.model", "start_date":"202501", "end_date":"202501"}' \
 --evaluate \
 --show_metric_by_thresholds="0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9" \
 --show_optimal_metric \

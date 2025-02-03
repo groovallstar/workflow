@@ -17,9 +17,6 @@ class MetricData:
     precision: np.float32 = 0.0         # Precision
     recall: np.float32 = 0.0            # Recall
     f1: np.float32 = 0.0                # F1-Score
-    f1_weighted: np.float32 = 0.0       # F1-Score (Weighted)
-    f2: np.float32 = 0.0                # F2-Score (F-beta score)
-    f05: np.float32 = 0.0               # F0.5-Score (F-beta score)
     roc_auc: np.float32 = 0.0           # ROC-AUC
     miss_rate: np.float32 = 0.0         # Miss Rate (FNR:False Negative Rate)
     fall_out: np.float32 = 0.0          # Fall-out (FPR:False Positive Rate)
@@ -51,21 +48,6 @@ class MetricData:
         return 'f1'
 
     @staticmethod
-    def str_f1_weighted() -> str:
-        """"Return 'f1_weighted'"""
-        return 'f1_weighted'
-
-    @staticmethod
-    def str_f2() -> str:
-        """Return 'f2'"""
-        return 'f2'
-
-    @staticmethod
-    def str_f05() -> str:
-        """Return 'f05'"""
-        return 'f05'
-
-    @staticmethod
     def str_roc_auc() -> str:
         """Return 'roc_auc'"""
         return 'roc_auc'
@@ -93,37 +75,39 @@ class MetricData:
     @staticmethod
     def get_accuracy_score(y_test, predict) -> np.float32:
         """Get Accuracy Score"""
-        return round(accuracy_score(y_test, predict), 8)
+        score = accuracy_score(y_test, predict)
+        if isinstance(score, float):
+            return round(score, 8)
+        else:
+            return score
 
     @staticmethod
     def get_precision_score(y_test, predict) -> np.float32:
         """Get Precision Score"""
-        return round(precision_score(y_test, predict, zero_division=0), 8)
+        score = precision_score(
+            y_test, predict, zero_division=0, average='weighted')
+        if isinstance(score, float):
+            return round(score, 8)
+        else:
+            return score
 
     @staticmethod
     def get_recall_score(y_test, predict) -> np.float32:
         """Get Recall Score"""
-        return round(recall_score(y_test, predict), 8)
+        score = recall_score(y_test, predict, average='weighted')
+        if isinstance(score, float):
+            return round(score, 8)
+        else:
+            return score
 
     @staticmethod
     def get_f1_score(y_test, predict) -> np.float32:
         """Get F1 Score"""
-        return round(f1_score(y_test, predict), 8)
-
-    @staticmethod
-    def get_f1_weighted_score(y_test, predict) -> np.float32:
-        """Get Weighted F1 Score"""
-        return round(f1_score(y_test, predict, average='weighted'), 8)
-
-    @staticmethod
-    def get_f2_score(y_test, predict) -> np.float32:
-        """Get FBeta Score(2)"""
-        return round(fbeta_score(y_test, predict, beta=2), 8)
-
-    @staticmethod
-    def get_f05_score(y_test, predict) -> np.float32:
-        """Get FBeta Score(0.5)"""
-        return round(fbeta_score(y_test, predict, beta=0.5), 8)
+        score = f1_score(y_test, predict, average='weighted')
+        if isinstance(score, float):
+            return round(score, 8)
+        else:
+            return score
 
     @staticmethod
     def get_roc_auc_score(y_test, predict) -> np.float32:
@@ -149,8 +133,8 @@ class MetricData:
             roc_auc = roc_auc_score_multiclass(y_test, predict)
         else:
             roc_auc = roc_auc_score(y_test, predict)
-        
-        return round(roc_auc, 8)
+        return roc_auc
+        #return round(roc_auc, 8)
 
     @staticmethod
     def get_miss_rate_score(y_test, predict) -> np.float32:
@@ -213,6 +197,3 @@ class BestModelScoreInfo:
        여러 모델 중 가장 높은 Score를 가진 모델 정보 저장
     """
     highest_f1: ScoreInfo = field(default_factory=ScoreInfo)
-    highest_f1_weighted: ScoreInfo = field(default_factory=ScoreInfo)
-    highest_f2: ScoreInfo = field(default_factory=ScoreInfo)
-    highest_f05: ScoreInfo = field(default_factory=ScoreInfo)
