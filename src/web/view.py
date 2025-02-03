@@ -14,7 +14,7 @@ templates = Jinja2Templates(directory='templates')
 
 view_router = EndSlashRemoveRouter(redirect_slashes=False)
 
-@view_router.get('/', response_class=_TemplateResponse)
+@view_router.get('/')
 async def load_base_page(request: Request) -> _TemplateResponse:
     """최초 페이지 Load.
 
@@ -30,7 +30,7 @@ async def load_base_page(request: Request) -> _TemplateResponse:
             'request': request,
         }, status_code=status.HTTP_200_OK)
 
-@view_router.get('/contents', response_class=_TemplateResponse)
+@view_router.get('/contents')
 async def get_contents_page(
     request: Request, page: PageName) -> _TemplateResponse:
     """각 페이지의 Jinja2 Template이 포함된 HTML 데이터 전달.
@@ -57,7 +57,7 @@ async def get_contents_page(
             'page_card_list': card_list
         }, status_code=status.HTTP_200_OK)
 
-@view_router.get('/attributes', response_class=PrettyJSONResponse)
+@view_router.get('/attributes')
 async def get_page_attributes(page: PageName) -> PrettyJSONResponse:
     """Element의 ID 값 전달
 

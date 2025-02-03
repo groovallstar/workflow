@@ -55,7 +55,6 @@ def test_select_list_for_collection():
     from web.jinja.template_insert_data import InsertDataId
     from web.jinja.template_insert_table import InsertTableId
     from web.jinja.template_train_predict import TrainPredictId
-    from web.jinja.template_feature_selection import FeatureSelectionId
 
     documents = test_select_list_for_database()
     assert 'documents' == documents

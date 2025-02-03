@@ -66,6 +66,9 @@ class TrainPredictId:
 
         self._attributes['show_data'] = \
             TrainPredictId.all_prefix+'show-data'
+
+        self._attributes['train_with_tuning'] = \
+            TrainPredictId.train_prefix+'train_with_tuning'
         self._attributes['train'] = \
             TrainPredictId.train_prefix+'train'
 
@@ -79,11 +82,6 @@ class TrainPredictId:
             TrainPredictId.all_prefix+'show_optimal_metric'
         self._attributes['find_best_model'] = \
             TrainPredictId.all_prefix+'find_best_model'
-
-        self._attributes['grid_search'] = \
-            TrainPredictId.train_prefix+'gridsearch'
-        self._attributes['bayesian_optimizer'] = \
-            TrainPredictId.train_prefix + 'bayesian-optimizer'
 
         self._attributes['split_ratio'] = {}
         self._attributes['split_ratio']['train'] = \
@@ -155,6 +153,9 @@ class TrainPredictId:
     def save_model_collection(self):
         return self._attributes['save_model']['collection']
     @property
+    def train_with_tuning(self):
+        return self._attributes['train_with_tuning']
+    @property
     def train(self): return self._attributes['train']
     @property
     def evaluate(self): return self._attributes['evaluate']
@@ -168,10 +169,6 @@ class TrainPredictId:
         return self._attributes['show_optimal_metric']
     @property
     def find_best_model(self): return self._attributes['find_best_model']
-    @property
-    def gridsearch(self): return self._attributes['grid_search']
-    @property
-    def bayesian_optimizer(self): return self._attributes['bayesian_optimizer']
     @property
     def split_train(self): return self._attributes['split_ratio']['train']
     @property
@@ -207,7 +204,7 @@ class TrainPredictElementList(TrainPredictId):
                    error_message='',
                    select_list=[
                        dict(text='iris', selected=False),
-                       dict(text='digit', selected=False),
+                       dict(text='digits', selected=False),
                        dict(text='wine', selected=False),
                        dict(text='breast_cancer', selected=False),]),
             Input(label_text='Run Name',
@@ -280,7 +277,7 @@ class TrainPredictElementList(TrainPredictId):
                 error_message='',
                 select_list=[
                     dict(text='iris.yaml', selected=False),
-                    dict(text='digit.yaml', selected=False),
+                    dict(text='digits.yaml', selected=False),
                     dict(text='wine.yaml', selected=False),
                     dict(text='breast_cancer.yaml', selected=False)])
         ]
@@ -360,7 +357,14 @@ class TrainPredictElementList(TrainPredictId):
         ]
 
         train_column_list = [
-            CheckBox(id=self.train, text='Train', checked=False)
+            CheckBox(
+                id=self.train_with_tuning,
+                text='Train With Tuning',
+                checked=False),
+            CheckBox(
+                id=self.train,
+                text='Train',
+                checked=False),
         ]
 
         evaluate_column_list = [
@@ -389,13 +393,6 @@ class TrainPredictElementList(TrainPredictId):
             CheckBox(
                 id=self.find_best_model,
                 text='Find Best Model',
-                checked=False)
-        ]
-
-        hyper_parameter_column_list = [
-            CheckBox(id=self.gridsearch, text='GridSearch', checked=False),
-            CheckBox(
-                id=self.bayesian_optimizer, text='Bayesian Optimizer',
                 checked=False)
         ]
 
@@ -486,11 +483,6 @@ class TrainPredictElementList(TrainPredictId):
                            Row(column_list=\
                                show_metric_by_thresholds_column_list, hr=True),
                            Row(column_list=find_best_model_list)])
-        )
-
-        self._card_list.append(
-            Card(header_small='Find Hyper Parameters',
-                 row_list=[Row(column_list=hyper_parameter_column_list)])
         )
 
     @property

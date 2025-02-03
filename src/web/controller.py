@@ -1,4 +1,5 @@
-from typing import AsyncGenerator, Union
+from typing import AsyncGenerator
+import json
 
 from fastapi import Response, status
 from fastapi.encoders import jsonable_encoder
@@ -6,12 +7,12 @@ from fastapi.params import Depends
 
 from aioredis import Channel, Redis
 
-from fastapi_plugins import depends_redis
 from sse_starlette.sse import EventSourceResponse
 
 from common.container.mongo import MongoDB, Collection
 from common.trace_log import TraceLog
 
+from web.plugins.redis._redis import depends_redis
 from web.settings import get_settings
 from web.handler import EndSlashRemoveRouter, JsonException
 from web.handler import PrettyJSONResponse
@@ -36,8 +37,6 @@ async def subscribe(channel: str, redis: Redis) -> AsyncGenerator:
         channel=Channel(channel, False))
     while await channel_subscription.wait_message():
         message = await channel_subscription.get()
-
-        import json
         json_message = json.loads(message)
 
         # celery 로부터 전달된 message 형식. id = task id
@@ -70,8 +69,7 @@ async def stream(
     return EventSourceResponse(subscribe(channel, redis))
 
 @controller_router.get('/settings')
-async def get_last_settings(
-    page: PageName) -> Union[Response, PrettyJSONResponse]:
+async def get_last_settings(page: PageName) -> Response:
     """각 페이지에서 사용자가 마지막으로 설정한 element 값 전달
 
     Args:  
@@ -85,8 +83,7 @@ async def get_last_settings(
     try:
         col = Collection('web', 'last_setting')
         response_data = col.object.find_one(
-            {'_id': page},
-            {'_id': 0})
+            {'_id': page}, {'_id': 0})
     except BaseException as ex:
         TraceLog().info(ex)
         response_data = {}
@@ -98,7 +95,7 @@ async def get_last_settings(
         content=response_data, status_code=status.HTTP_200_OK)
 
 @controller_router.get('/sel_list_db')
-async def select_list_for_database() -> Union[Response, PrettyJSONResponse]:
+async def select_list_for_database() -> Response:
     """Query Database list.
 
     Returns:  
@@ -123,7 +120,7 @@ async def select_list_for_database() -> Union[Response, PrettyJSONResponse]:
 
 @controller_router.get('/sel_list_col')
 async def select_list_for_collection(
-    element_id: str, database: str) -> Union[Response, PrettyJSONResponse]:
+    element_id: str, database: str) -> Response:
     """Query Collection list.
 
     Args:  
@@ -170,15 +167,14 @@ async def select_list_for_collection(
 
 @controller_router.get('/sel_list_date')
 async def select_list_for_date(
-    params: DateQueryParams = Depends()
-    ) -> Union[Response, PrettyJSONResponse]:
+    params: DateQueryParams = Depends()) -> Response:
     """날짜 데이터 쿼리.
 
     Args:  
         DateQueryParams.database (str): database명  
         DateQueryParams.collection (str): collection명  
-        DateQueryParams.start_date (Union[str, None]): 시작날짜.  
-        DateQueryParams.end_date (Union[str, None]): 종료날짜.
+        DateQueryParams.start_date (str | None): 시작날짜.  
+        DateQueryParams.end_date (str | None): 종료날짜.
 
     Raises:  
         JsonException: start_date, end_date 둘다 있을경우 예외처리
@@ -210,7 +206,7 @@ async def select_list_for_date(
     elif params.queryable_end_date_in_start_date():
         try:
             col = Collection(params.database, params.collection)
-            result = col.get_datetime_list_from_collection(
+            result = col.get_collection_datetime_list(
                 start_date=params.start_date, end_date=params.end_date)
         except BaseException as ex:
             TraceLog().info(ex)
@@ -223,7 +219,7 @@ async def select_list_for_date(
     elif params.queryable_start_date_in_end_date():
         try:
             col = Collection(params.database, params.collection)
-            result = col.get_datetime_list_from_collection(
+            result = col.get_collection_datetime_list(
                 start_date=params.start_date, end_date=params.end_date)
         except BaseException as ex:
             TraceLog().info(ex)
@@ -245,7 +241,7 @@ async def select_list_for_date(
     return PrettyJSONResponse(
         content=response_data, status_code=status.HTTP_200_OK)
 
-@controller_router.get('/count', response_class=Response)
+@controller_router.get('/count')
 async def validation_select_list(
     params: CountQueryParams = Depends()) -> Response:
     """웹에서 설정한 값이 실제 존재하는지 체크.
@@ -253,8 +249,8 @@ async def validation_select_list(
     Args:  
         CountQueryParams.database (str): database명  
         CountQueryParams.collection (str): collection명  
-        CountQueryParams.start_date (Union[str, None]): 시작날짜.  
-        CountQueryParams.end_date (Union[str, None]): 종료날짜.
+        CountQueryParams.start_date (str | None): 시작날짜.  
+        CountQueryParams.end_date (str | None): 종료날짜.
 
     Raises:  
         JsonException: start_date, end_date 값이 하나라도
@@ -277,7 +273,7 @@ async def validation_select_list(
     elif params.queryable_document():
         try:
             col = Collection(params.database, params.collection)
-            document_count = col.get_data_count_from_datetime(
+            document_count = col.get_count_from_datetime(
                 start_date=params.start_date, end_date=params.end_date)
         except BaseException as ex:
             TraceLog().info(ex)
@@ -300,7 +296,7 @@ async def validation_select_list(
 
     return Response(status_code=status.HTTP_200_OK)
 
-@controller_router.post('/task', response_class=Response)
+@controller_router.post('/task')
 async def send_task(parameters: dict) -> Response:
     """웹에서 설정한 Element의 값을 celery에 전달
 
@@ -333,8 +329,6 @@ async def send_task(parameters: dict) -> Response:
         task_function = 'tasks.inserttable'
     elif page_name == PageName.TRAIN_PREDICT:
         task_function = 'tasks.pipeline'
-    elif page_name == PageName.FEATURE_SELECTION:
-        task_function = 'tasks.featureselection'
     else:
         TraceLog().info('Page Name Not Found.')
         raise JsonException(
@@ -348,7 +342,9 @@ async def send_task(parameters: dict) -> Response:
         col = Collection('web', 'last_setting')
         query = parameters.copy()
         query['_id'] = page_name
-        col.find_one_and_replace({'_id': page_name}, query, upsert=True)
+        col = Collection('web', 'last_setting')
+        col.find_one_and_replace(
+            filter_query={'_id': page_name}, document=query)
     except BaseException as ex:
         TraceLog().info(ex)
 

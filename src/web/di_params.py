@@ -1,18 +1,15 @@
-from typing import Union
-
 class BaseQueryParams():
     """Base Query Params"""
     def __init__(
         self, database: str, collection: str,
-        start_date: Union[str, None]=None,
-        end_date: Union[str, None]=None):
+        start_date: str = '', end_date: str = ''):
         """Initialize
 
         Args:
             database (str): database명
             collection (str): collection명
-            start_date (Optional[str], optional): 시작날짜. Defaults to "".
-            end_date (Optional[str], optional): 종료날짜. Defaults to "".
+            start_date (str, optional): 시작날짜. Defaults to "".
+            end_date (str, optional): 종료날짜. Defaults to "".
         """
         self._database = database
         self._collection = collection
@@ -44,7 +41,7 @@ class DateQueryParams(BaseQueryParams):
     def __init__(
         self,
         database: str, collection: str,
-        start_date: Union[str, None]=None, end_date: Union[str, None]=None):
+        start_date: str = '', end_date: str = ''):
         """Initialize
            입력 값에 따라 Query 조건이 달라지므로 파라미터 체크 method 존재
 
@@ -95,15 +92,15 @@ class CountQueryParams(DateQueryParams):
     def __init__(
         self,
         database: str, collection: str,
-        start_date: Union[str, None]=None, end_date: Union[str, None]=None):
+        start_date: str = '', end_date: str = ''):
         """Initialize
            입력 값에 따라 Query 조건이 달라지므로 파라미터 체크 method 존재
 
         Args:
             database (str): database명
             collection (str): collection명
-            start_date (Optional[str], optional): 시작날짜. Defaults to "".
-            end_date (Optional[str], optional): 종료날짜. Defaults to "".
+            start_date (str, optional): 시작날짜. Defaults to "".
+            end_date (str, optional): 종료날짜. Defaults to "".
         """
         super().__init__(
             database=database, collection=collection,

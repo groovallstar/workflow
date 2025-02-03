@@ -44,7 +44,7 @@ class InsertDataElementList(InsertDataId):
                 error_message='',
                 select_list=[
                     dict(text='iris', selected=False),
-                    dict(text='digit', selected=False),
+                    dict(text='digits', selected=False),
                     dict(text='wine', selected=False),
                     dict(text='breast_cancer', selected=False)])
         ]

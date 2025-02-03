@@ -1,0 +1,36 @@
+[{
+  "_id": "database",
+  "database": [
+    "test"
+  ]
+},
+{
+  "_id": "data",
+  "collection": [
+    "data"
+  ]
+},
+{
+  "_id": "load-model",
+  "collection": [
+    "model"
+  ]
+},
+{
+  "_id": "save-model",
+  "collection": [
+    "model"
+  ]
+},
+{
+  "_id": "table",
+  "collection": [
+    "table"
+  ]
+},
+{
+  "_id": "model",
+  "collection": [
+    "model"
+  ]
+}]
